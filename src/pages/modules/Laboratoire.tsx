@@ -93,6 +93,8 @@ const Laboratoire = () => {
             params: catalogMatch?.params || [examen],
             results: {},
             createdAt: new Date(c.date),
+            paye: hasResult, // already done = already paid
+            prix: EXAM_PRICES[catalogMatch?.id || 'nfs'] || 8000,
           });
         });
       });
