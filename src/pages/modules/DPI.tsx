@@ -6,15 +6,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MOCK_PATIENTS, SERVICES } from '@/data/mockData';
+import { SERVICES } from '@/data/mockData';
+import { usePatientJourney } from '@/contexts/PatientJourneyContext';
+import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import {
-  FileText, Clock, FlaskConical, ScanLine, AlertTriangle, Pill, Heart,
+  FileText, Clock, FlaskConical, ScanLine, AlertTriangle, Pill, 
   Mic, Sparkles, Search, User, Send
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const DPI = () => {
-  const [selectedPatientId, setSelectedPatientId] = useState(MOCK_PATIENTS[0].id);
+  const { patients, advancePatient } = usePatientJourney();
+  const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?.id || '1');
   const [searchTerm, setSearchTerm] = useState('');
   const [consultNote, setConsultNote] = useState('');
   const [diagnostic, setDiagnostic] = useState('');
@@ -22,30 +25,42 @@ const DPI = () => {
   const [examens, setExamens] = useState('');
   const [cim10Search, setCim10Search] = useState('');
 
-  const patient = MOCK_PATIENTS.find(p => p.id === selectedPatientId)!;
-  const filtered = MOCK_PATIENTS.filter(p =>
+  const patient = patients.find(p => p.id === selectedPatientId)!;
+  const filtered = patients.filter(p =>
     `${p.prenom} ${p.nom} ${p.nhid}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleSendToLab = () => {
+    advancePatient(selectedPatientId, 'labo', 'DPI – Consultation', `Examens prescrits: ${examens || 'Bilan standard'}`);
+  };
+
+  const handleSendToImaging = () => {
+    advancePatient(selectedPatientId, 'imagerie', 'DPI – Consultation', `Imagerie prescrite`);
+  };
+
+  const handleSendToPharmacy = () => {
+    advancePatient(selectedPatientId, 'pharmacie', 'DPI – Consultation', `Ordonnance: ${ordonnance.substring(0, 50) || 'Prescription'}`);
+  };
+
+  const handleDischarge = () => {
+    advancePatient(selectedPatientId, 'sorti', 'DPI – Consultation', 'Sortie avec résumé IA');
+  };
+
   const handleSaveConsultation = () => {
     toast.success('Consultation enregistrée', {
-      description: `Dossier de ${patient.prenom} ${patient.nom} mis à jour. Prescription envoyée à la pharmacie.`
+      description: `Dossier de ${patient.prenom} ${patient.nom} mis à jour.`
     });
   };
 
   const handleVoiceNote = () => {
-    toast.info('🎤 Dictée vocale simulée', { description: 'Patient présente fièvre depuis 3 jours avec céphalées...' });
+    toast.info('🎤 Dictée vocale simulée');
     setConsultNote(prev => prev + 'Patient présente fièvre depuis 3 jours avec céphalées et myalgies. ');
-  };
-
-  const handleAISummary = () => {
-    toast.success('🤖 Résumé IA généré', { description: 'Résumé de sortie prêt pour validation' });
   };
 
   const CIM10_SUGGESTIONS = [
     { code: 'B50.9', label: 'Paludisme à P. falciparum, sans précision' },
     { code: 'A39.0', label: 'Méningite à méningocoque' },
-    { code: 'I21.0', label: 'Infarctus aigu du myocarde, paroi antérieure' },
+    { code: 'I21.0', label: 'Infarctus aigu du myocarde' },
     { code: 'J18.9', label: 'Pneumopathie, sans précision' },
     { code: 'E11.9', label: 'Diabète sucré de type 2' },
     { code: 'O14.1', label: 'Pré-éclampsie sévère' },
@@ -81,30 +96,30 @@ const DPI = () => {
 
         {/* Patient DPI */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Patient header */}
+          {/* Patient header + Journey */}
           <Card className="border-l-4 border-l-primary">
-            <CardContent className="p-4">
+            <CardContent className="p-4 space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
                     <User className="w-7 h-7 text-primary" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-foreground">{patient.prenom} {patient.nom}</h2>
-                    <p className="text-sm text-muted-foreground">{patient.nhid} • {patient.age} ans • {patient.sexe} • {patient.groupeSanguin}</p>
-                    <p className="text-sm text-primary font-medium">{patient.pathologieActuelle}</p>
+                    <h2 className="text-lg font-bold text-foreground">{patient?.prenom} {patient?.nom}</h2>
+                    <p className="text-sm text-muted-foreground">{patient?.nhid} • {patient?.age} ans • {patient?.sexe} • {patient?.groupeSanguin}</p>
+                    <p className="text-sm text-primary font-medium">{patient?.pathologieActuelle}</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {patient.allergies.length > 0 && (
-                    <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3 h-3" /> Allergies: {patient.allergies.join(', ')}</Badge>
+                  {patient?.allergies.length > 0 && (
+                    <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3 h-3" /> {patient.allergies.join(', ')}</Badge>
                   )}
-                  <Badge variant="outline">{SERVICES.find(s => s.id === patient.service)?.name}</Badge>
+                  <Badge variant="outline">{SERVICES.find(s => s.id === patient?.service)?.name}</Badge>
                 </div>
               </div>
               {/* Vitals */}
-              {patient.vitaux && (
-                <div className="grid grid-cols-5 gap-2 mt-3">
+              {patient?.vitaux && (
+                <div className="grid grid-cols-5 gap-2">
                   {[
                     { label: 'TA', value: patient.vitaux.tension, unit: 'mmHg' },
                     { label: 'T°', value: patient.vitaux.temperature, unit: '°C' },
@@ -119,6 +134,11 @@ const DPI = () => {
                   ))}
                 </div>
               )}
+              {/* Journey tracker */}
+              <div className="pt-2 border-t border-border">
+                <p className="text-[10px] font-medium text-muted-foreground mb-1">PARCOURS EN TEMPS RÉEL</p>
+                <PatientJourneyTracker patientId={selectedPatientId} showEvents />
+              </div>
             </CardContent>
           </Card>
 
@@ -133,7 +153,6 @@ const DPI = () => {
               <TabsTrigger value="allergies" className="gap-1 text-xs"><AlertTriangle className="w-3 h-3" />Allergies</TabsTrigger>
             </TabsList>
 
-            {/* CONSULTATION TAB */}
             <TabsContent value="consultation" className="space-y-4">
               <Card>
                 <CardHeader><CardTitle className="text-base">Nouvelle Consultation</CardTitle></CardHeader>
@@ -145,26 +164,18 @@ const DPI = () => {
                     </div>
                     <div className="space-y-1">
                       <label className="text-xs font-medium text-muted-foreground">Service</label>
-                      <Select defaultValue={patient.service}>
+                      <Select defaultValue={patient?.service}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {SERVICES.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                        </SelectContent>
+                        <SelectContent>{SERVICES.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                   </div>
 
-                  {/* CIM-10 search */}
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Diagnostic (CIM-10)</label>
                     <div className="relative">
                       <Search className="absolute left-2 top-2.5 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        className="pl-8"
-                        placeholder="Rechercher code CIM-10..."
-                        value={cim10Search || diagnostic}
-                        onChange={e => { setCim10Search(e.target.value); setDiagnostic(e.target.value); }}
-                      />
+                      <Input className="pl-8" placeholder="Rechercher code CIM-10..." value={cim10Search || diagnostic} onChange={e => { setCim10Search(e.target.value); setDiagnostic(e.target.value); }} />
                     </div>
                     {CIM10_SUGGESTIONS.length > 0 && (
                       <div className="border rounded-md mt-1 bg-card shadow-md">
@@ -180,18 +191,16 @@ const DPI = () => {
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-medium text-muted-foreground">Notes de consultation</label>
-                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handleVoiceNote}>
-                        <Mic className="w-3 h-3" /> Dictée vocale
-                      </Button>
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handleVoiceNote}><Mic className="w-3 h-3" /> Dictée vocale</Button>
                     </div>
-                    <Textarea placeholder="Anamnèse, examen clinique, observations..." value={consultNote} onChange={e => setConsultNote(e.target.value)} rows={4} />
+                    <Textarea placeholder="Anamnèse, examen clinique..." value={consultNote} onChange={e => setConsultNote(e.target.value)} rows={4} />
                   </div>
 
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Ordonnance</label>
                     <Textarea placeholder="Médicaments, posologie, durée..." value={ordonnance} onChange={e => setOrdonnance(e.target.value)} rows={3} />
-                    {patient.allergies.length > 0 && ordonnance.toLowerCase().includes('pénicilline') && (
-                      <Badge variant="destructive" className="gap-1 mt-1"><AlertTriangle className="w-3 h-3" /> ALERTE: Conflit avec allergie connue – Pénicilline!</Badge>
+                    {patient?.allergies.length > 0 && ordonnance.toLowerCase().includes('pénicilline') && (
+                      <Badge variant="destructive" className="gap-1 mt-1"><AlertTriangle className="w-3 h-3" /> ALERTE: Conflit allergie – Pénicilline!</Badge>
                     )}
                   </div>
 
@@ -201,20 +210,31 @@ const DPI = () => {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button className="flex-1 gap-1" onClick={handleSaveConsultation}><Send className="w-4 h-4" /> Enregistrer & Envoyer</Button>
-                    <Button variant="outline" className="gap-1" onClick={handleAISummary}><Sparkles className="w-4 h-4" /> Résumé IA</Button>
+                    <Button className="flex-1 gap-1" onClick={handleSaveConsultation}><Send className="w-4 h-4" /> Enregistrer</Button>
+                    <Button variant="outline" className="gap-1" onClick={() => { toast.success('🤖 Résumé IA généré'); }}><Sparkles className="w-4 h-4" /> Résumé IA</Button>
+                  </div>
+
+                  {/* Journey action buttons */}
+                  <div className="border-t border-border pt-4">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">ORIENTER LE PATIENT →</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" className="text-xs gap-1" onClick={handleSendToLab}>🔬 Envoyer au Laboratoire</Button>
+                      <Button size="sm" variant="outline" className="text-xs gap-1" onClick={handleSendToImaging}>📷 Envoyer en Imagerie</Button>
+                      <Button size="sm" variant="outline" className="text-xs gap-1" onClick={handleSendToPharmacy}>💊 Envoyer à la Pharmacie</Button>
+                      <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => advancePatient(selectedPatientId, 'hospitalise', 'DPI – Consultation', 'Hospitalisation requise')}>🛏️ Hospitaliser</Button>
+                      <Button size="sm" variant="secondary" className="text-xs gap-1" onClick={handleDischarge}>✅ Sortie du patient</Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* HISTORIQUE TAB */}
             <TabsContent value="historique">
               <Card>
                 <CardContent className="p-4 space-y-3">
-                  {patient.consultations.length === 0 ? (
+                  {patient?.consultations.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">Aucune consultation précédente</p>
-                  ) : patient.consultations.map(c => (
+                  ) : patient?.consultations.map(c => (
                     <div key={c.id} className="p-4 rounded-lg border border-border">
                       <div className="flex justify-between items-start mb-2">
                         <div>
@@ -234,13 +254,12 @@ const DPI = () => {
               </Card>
             </TabsContent>
 
-            {/* LABO TAB */}
             <TabsContent value="labo">
               <Card>
                 <CardContent className="p-4 space-y-3">
-                  {patient.labResults.length === 0 ? (
+                  {patient?.labResults.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">Aucun résultat de laboratoire</p>
-                  ) : patient.labResults.map(l => (
+                  ) : patient?.labResults.map(l => (
                     <div key={l.id} className="p-4 rounded-lg border border-border">
                       <div className="flex justify-between mb-2">
                         <p className="text-sm font-medium text-foreground">{l.type} – {l.date}</p>
@@ -262,39 +281,36 @@ const DPI = () => {
               </Card>
             </TabsContent>
 
-            {/* IMAGERIE TAB */}
             <TabsContent value="imagerie">
               <Card>
                 <CardContent className="p-4 space-y-3">
-                  {patient.imagingResults.length === 0 ? (
+                  {patient?.imagingResults.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">Aucun résultat d'imagerie</p>
-                  ) : patient.imagingResults.map(img => (
+                  ) : patient?.imagingResults.map(img => (
                     <div key={img.id} className="p-4 rounded-lg border border-border">
                       <div className="flex justify-between mb-2">
                         <p className="text-sm font-medium text-foreground">{img.type} – {img.zone}</p>
                         <Badge variant={img.statut === 'termine' ? 'default' : 'secondary'}>{img.statut === 'termine' ? 'Terminé' : 'En cours'}</Badge>
                       </div>
                       <p className="text-sm text-foreground">{img.interpretation}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{img.date}</p>
                     </div>
                   ))}
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* PRESCRIPTIONS TAB */}
             <TabsContent value="prescriptions">
               <Card>
                 <CardContent className="p-4 space-y-3">
-                  {patient.prescriptions.length === 0 ? (
+                  {patient?.prescriptions.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">Aucune ordonnance</p>
-                  ) : patient.prescriptions.map(p => (
-                    <div key={p.id} className="p-4 rounded-lg border border-border">
+                  ) : patient?.prescriptions.map(pr => (
+                    <div key={pr.id} className="p-4 rounded-lg border border-border">
                       <div className="flex justify-between mb-2">
-                        <p className="text-sm font-medium text-foreground">Ordonnance du {p.date}</p>
-                        <Badge variant={p.statut === 'delivre' ? 'default' : 'secondary'}>{p.statut === 'delivre' ? 'Délivré' : 'En attente'}</Badge>
+                        <p className="text-sm font-medium text-foreground">Ordonnance du {pr.date}</p>
+                        <Badge variant={pr.statut === 'delivre' ? 'default' : 'secondary'}>{pr.statut === 'delivre' ? 'Délivré' : 'En attente'}</Badge>
                       </div>
-                      {p.medicaments.map((m, i) => (
+                      {pr.medicaments.map((m, i) => (
                         <div key={i} className="text-sm text-foreground">• {m.nom} – {m.dosage} – {m.frequence} – {m.duree}</div>
                       ))}
                     </div>
@@ -303,15 +319,14 @@ const DPI = () => {
               </Card>
             </TabsContent>
 
-            {/* ALLERGIES TAB */}
             <TabsContent value="allergies">
               <Card>
                 <CardContent className="p-4">
-                  {patient.allergies.length === 0 ? (
+                  {patient?.allergies.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">Aucune allergie connue</p>
                   ) : (
                     <div className="space-y-2">
-                      {patient.allergies.map(a => (
+                      {patient?.allergies.map(a => (
                         <Badge key={a} variant="destructive" className="gap-1 mr-2 text-sm"><AlertTriangle className="w-3 h-3" /> {a}</Badge>
                       ))}
                     </div>

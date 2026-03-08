@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppProvider } from "@/contexts/AppContext";
+import { PatientJourneyProvider } from "@/contexts/PatientJourneyContext";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import TopBar from "@/components/TopBar";
@@ -83,11 +84,13 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <AppProvider>
+          <PatientJourneyProvider>
           <BrowserRouter>
             <Routes>
               <Route path="/*" element={<AuthGate />} />
             </Routes>
           </BrowserRouter>
+          </PatientJourneyProvider>
         </AppProvider>
       </AuthProvider>
     </TooltipProvider>

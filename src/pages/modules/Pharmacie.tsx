@@ -2,13 +2,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { PHARMACY_STOCK, MOCK_PATIENTS } from '@/data/mockData';
-import { Pill, AlertTriangle, TrendingDown, CheckCircle, Package } from 'lucide-react';
+import { PHARMACY_STOCK } from '@/data/mockData';
+import { usePatientJourney } from '@/contexts/PatientJourneyContext';
+import PatientJourneyTracker from '@/components/PatientJourneyTracker';
+import { Pill, AlertTriangle, TrendingDown, CheckCircle, Package, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Pharmacie = () => {
-  const pendingPrescriptions = MOCK_PATIENTS.flatMap(p => p.prescriptions.filter(pr => pr.statut === 'en_attente').map(pr => ({ ...pr, patient: `${p.prenom} ${p.nom}`, nhid: p.nhid })));
+  const { patients, advancePatient, getPatientsByStep } = usePatientJourney();
+  const patientsAtPharmacy = getPatientsByStep('pharmacie');
+  const pendingPrescriptions = patients.flatMap(p => p.prescriptions.filter(pr => pr.statut === 'en_attente').map(pr => ({ ...pr, patient: `${p.prenom} ${p.nom}`, nhid: p.nhid, patientId: p.id })));
   const lowStock = PHARMACY_STOCK.filter(s => s.stock <= s.seuil);
+
+  const handleDeliver = (patientId: string, patientName: string) => {
+    advancePatient(patientId, 'sorti', 'Pharmacie', `Médicaments délivrés – Sortie du patient`);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -19,10 +27,10 @@ const Pharmacie = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
+          { label: 'Patients à la pharmacie', value: String(patientsAtPharmacy.length), icon: Pill, color: 'text-primary' },
           { label: 'Ordonnances en attente', value: String(pendingPrescriptions.length + 3), icon: Pill, color: 'text-warning' },
-          { label: 'Délivrées aujourd\'hui', value: '34', icon: CheckCircle, color: 'text-secondary' },
           { label: 'Alertes stock', value: String(lowStock.length), icon: AlertTriangle, color: 'text-destructive' },
-          { label: 'Références en stock', value: String(PHARMACY_STOCK.length), icon: Package, color: 'text-primary' },
+          { label: 'Références en stock', value: String(PHARMACY_STOCK.length), icon: Package, color: 'text-secondary' },
         ].map(s => (
           <Card key={s.label}>
             <CardContent className="p-4 flex items-center gap-3">
@@ -36,8 +44,30 @@ const Pharmacie = () => {
         ))}
       </div>
 
+      {/* Patients at pharmacy with journey */}
+      {patientsAtPharmacy.length > 0 && (
+        <Card className="border-primary/20">
+          <CardHeader><CardTitle className="text-base">💊 Patients à la Pharmacie</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {patientsAtPharmacy.map(p => (
+              <div key={p.id} className="p-3 rounded-lg border border-border space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{p.prenom} {p.nom}</p>
+                    <p className="text-xs text-muted-foreground">{p.nhid} • {p.pathologieActuelle}</p>
+                  </div>
+                  <Button size="sm" className="text-xs gap-1 h-7" onClick={() => handleDeliver(p.id, `${p.prenom} ${p.nom}`)}>
+                    <Send className="w-3 h-3" /> Délivrer & Sortie
+                  </Button>
+                </div>
+                <PatientJourneyTracker patientId={p.id} showEvents />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending prescriptions */}
         <Card>
           <CardHeader><CardTitle className="text-base">Ordonnances à Délivrer</CardTitle></CardHeader>
           <CardContent className="space-y-2">
@@ -50,7 +80,7 @@ const Pharmacie = () => {
                 {pr.medicaments.map((m, i) => (
                   <p key={i} className="text-xs text-foreground">• {m.nom} – {m.dosage} – {m.frequence} – {m.duree}</p>
                 ))}
-                <Button size="sm" className="h-7 text-xs mt-2 gap-1" onClick={() => toast.success('Médicaments délivrés', { description: `Ordonnance pour ${pr.patient} délivrée` })}>
+                <Button size="sm" className="h-7 text-xs mt-2 gap-1" onClick={() => handleDeliver(pr.patientId, pr.patient)}>
                   <CheckCircle className="w-3 h-3" /> Délivrer
                 </Button>
               </div>
@@ -58,7 +88,6 @@ const Pharmacie = () => {
           </CardContent>
         </Card>
 
-        {/* Stock dashboard */}
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Package className="w-4 h-4" /> Stock FEFO</CardTitle></CardHeader>
           <CardContent className="space-y-3 max-h-[400px] overflow-y-auto">
@@ -87,14 +116,13 @@ const Pharmacie = () => {
         </Card>
       </div>
 
-      {/* IA Predictive Alert */}
       <Card className="border-warning/50 bg-warning/5">
         <CardContent className="p-4 flex items-start gap-3">
           <TrendingDown className="w-6 h-6 text-warning mt-1" />
           <div>
             <p className="text-sm font-bold text-foreground">🤖 Alerte IA Prédictive</p>
-            <p className="text-sm text-foreground">Rupture probable dans <strong>67 jours</strong> – ACT (Artéméther-Luméfantrine). Stock actuel: 45 unités. Consommation moyenne: 12/semaine. Recommandation: Commander 500 unités avant le 15/05/2024.</p>
-            <Button size="sm" className="mt-2 h-7 text-xs" variant="outline" onClick={() => toast.info('Bon de commande généré automatiquement')}>Générer bon de commande</Button>
+            <p className="text-sm text-foreground">Rupture probable dans <strong>67 jours</strong> – ACT (Artéméther-Luméfantrine). Stock: 45 unités. Recommandation: Commander 500 unités.</p>
+            <Button size="sm" className="mt-2 h-7 text-xs" variant="outline" onClick={() => toast.info('Bon de commande généré')}>Générer bon de commande</Button>
           </div>
         </CardContent>
       </Card>

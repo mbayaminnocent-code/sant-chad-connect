@@ -6,16 +6,19 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MOCK_PATIENTS, SERVICES } from '@/data/mockData';
+import { SERVICES } from '@/data/mockData';
+import { usePatientJourney } from '@/contexts/PatientJourneyContext';
+import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import { BedDouble, Users, Clock, AlertTriangle, Search, UserCheck, ArrowUpDown, Activity, CalendarDays, FileText, TrendingUp, Eye, ChevronDown, Thermometer } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Hospitalisations = () => {
+  const { patients } = usePatientJourney();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterService, setFilterService] = useState<string>('all');
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
 
-  const hospitalises = MOCK_PATIENTS.filter(p => p.hospitalisations.some(h => h.statut === 'actif'));
+  const hospitalises = patients.filter(p => p.hospitalisations.some(h => h.statut === 'actif'));
 
   const filteredPatients = hospitalises.filter(p => {
     const matchSearch = searchTerm === '' || `${p.prenom} ${p.nom} ${p.nhid}`.toLowerCase().includes(searchTerm.toLowerCase());
@@ -255,33 +258,10 @@ const Hospitalisations = () => {
                           )}
                         </div>
 
-                        {/* Patient journey in hospitalization */}
+                        {/* Patient journey */}
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-2">PARCOURS D'HOSPITALISATION</p>
-                          <div className="flex items-center gap-1">
-                            {patientSteps.map((step, idx) => {
-                              const currentStep = Math.min(Math.floor(daysIn / 1.5) + 1, patientSteps.length - 1);
-                              const isPast = idx < currentStep;
-                              const isCurrent = idx === currentStep;
-                              return (
-                                <div key={step} className="flex items-center flex-1">
-                                  <div className="flex flex-col items-center flex-1">
-                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${
-                                      isCurrent ? 'bg-primary border-primary text-primary-foreground shadow-md scale-110' :
-                                      isPast ? 'bg-secondary border-secondary text-secondary-foreground' :
-                                      'bg-muted border-border text-muted-foreground'
-                                    }`}>
-                                      {isPast ? '✓' : idx + 1}
-                                    </div>
-                                    <span className={`text-[9px] mt-1 text-center ${isCurrent ? 'font-bold text-primary' : 'text-muted-foreground'}`}>{step}</span>
-                                  </div>
-                                  {idx < patientSteps.length - 1 && (
-                                    <div className={`h-0.5 w-full ${isPast ? 'bg-secondary' : 'bg-border'}`} />
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
+                          <p className="text-xs font-medium text-muted-foreground mb-2">PARCOURS COMPLET DU PATIENT</p>
+                          <PatientJourneyTracker patientId={patient.id} showEvents />
                         </div>
 
                         {/* Consultations & lab results */}

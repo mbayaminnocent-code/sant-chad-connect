@@ -3,22 +3,40 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { MOCK_PATIENTS, QUEUE_DATA } from '@/data/mockData';
-import { Monitor, QrCode, Fingerprint, Users, Clock, CheckCircle } from 'lucide-react';
+import { usePatientJourney, JOURNEY_STEPS } from '@/contexts/PatientJourneyContext';
+import PatientJourneyTracker from '@/components/PatientJourneyTracker';
+import { Monitor, QrCode, Fingerprint, Users, Clock, CheckCircle, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Accueil = () => {
   const [showKiosk, setShowKiosk] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [newPatient, setNewPatient] = useState({ nom: '', prenom: '', age: '', telephone: '' });
+  const { registerNewPatient, advancePatient, getPatientsByStep, recentEvents, patients } = usePatientJourney();
+
+  const patientsAccueil = getPatientsByStep('accueil');
+  const patientsPaiement = getPatientsByStep('paiement');
 
   const handleRegister = () => {
+    if (!newPatient.nom || !newPatient.prenom) {
+      toast.error('Veuillez remplir le nom et le prénom');
+      return;
+    }
     setRegistering(true);
     setTimeout(() => {
+      const p = registerNewPatient({
+        nom: newPatient.nom,
+        prenom: newPatient.prenom,
+        age: Number(newPatient.age) || 30,
+        telephone: newPatient.telephone,
+      });
       setRegistering(false);
-      toast.success('Patient enregistré avec succès!', { description: `ID National: TCD-2024-${String(MOCK_PATIENTS.length + 1).padStart(5, '0')}` });
       setNewPatient({ nom: '', prenom: '', age: '', telephone: '' });
-    }, 1500);
+    }, 1200);
+  };
+
+  const handleSendToPaiement = (patientId: string) => {
+    advancePatient(patientId, 'paiement', 'Accueil', 'Dirigé vers la caisse');
   };
 
   return (
@@ -34,7 +52,6 @@ const Accueil = () => {
       </div>
 
       {showKiosk ? (
-        /* KIOSK MODE - Large touch-friendly interface */
         <div className="space-y-6">
           <Card className="border-2 border-primary/20">
             <CardContent className="p-8 text-center space-y-6">
@@ -49,9 +66,6 @@ const Accueil = () => {
                   <Fingerprint className="w-12 h-12" />
                   Empreinte Digitale
                 </Button>
-              </div>
-              <div className="bg-muted p-4 rounded-lg">
-                <p className="text-sm text-muted-foreground">Nouveau patient ? Approchez-vous du comptoir d'accueil</p>
               </div>
             </CardContent>
           </Card>
@@ -76,42 +90,63 @@ const Accueil = () => {
             </CardContent>
           </Card>
 
-          {/* Queue Display */}
+          {/* Queue with real-time journey */}
           <Card className="lg:col-span-2">
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4" /> File d'Attente</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {QUEUE_DATA.map(q => (
-                  <div key={q.position} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">{q.position}</span>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{q.patient}</p>
-                        <p className="text-xs text-muted-foreground">{q.nhid} • {q.service}</p>
-                      </div>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4" /> Patients à l'Accueil ({patientsAccueil.length})</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {patientsAccueil.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">Aucun patient en attente à l'accueil</p>
+              ) : patientsAccueil.map(p => (
+                <div key={p.id} className="p-3 rounded-lg border border-border space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{p.prenom} {p.nom}</p>
+                      <p className="text-xs text-muted-foreground">{p.nhid} • {p.age} ans • {p.pathologieActuelle}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{q.heureArrivee}</span>
-                      <Badge variant={q.statut === 'En consultation' ? 'default' : q.statut === 'Triage' ? 'secondary' : 'outline'} className="text-xs">
-                        {q.statut === 'En consultation' && <CheckCircle className="w-3 h-3 mr-1" />}
-                        {q.statut}
-                      </Badge>
-                    </div>
+                    <Button size="sm" className="gap-1 h-7 text-xs" onClick={() => handleSendToPaiement(p.id)}>
+                      <ArrowRight className="w-3 h-3" /> Envoyer à la Caisse
+                    </Button>
                   </div>
-                ))}
-              </div>
+                  <PatientJourneyTracker patientId={p.id} compact />
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>
       )}
 
+      {/* Live Journey Feed */}
+      <Card>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2">🔄 Flux en temps réel – Parcours patients</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
+            {recentEvents.slice(0, 15).map(evt => {
+              const toStep = JOURNEY_STEPS.find(s => s.key === evt.to);
+              const fromStep = JOURNEY_STEPS.find(s => s.key === evt.from);
+              return (
+                <div key={evt.id} className="flex items-center gap-2 p-2 rounded bg-muted/30 text-xs">
+                  <span className="text-muted-foreground font-mono w-12">
+                    {evt.timestamp.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <Badge variant="outline" className="text-[10px]">{evt.nhid}</Badge>
+                  <span className="font-medium text-foreground">{evt.patientName}</span>
+                  <span className="text-muted-foreground">{fromStep?.icon} → {toStep?.icon}</span>
+                  <span className="text-primary font-medium">{toStep?.label}</span>
+                  <span className="text-muted-foreground ml-auto">via {evt.module}</span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Patients aujourd\'hui', value: '47', color: 'text-primary' },
-          { label: 'En attente', value: '12', color: 'text-warning' },
-          { label: 'En consultation', value: '8', color: 'text-secondary' },
-          { label: 'Sortis', value: '27', color: 'text-muted-foreground' },
+          { label: 'Patients aujourd\'hui', value: String(patients.length), color: 'text-primary' },
+          { label: 'À l\'accueil', value: String(patientsAccueil.length), color: 'text-warning' },
+          { label: 'En consultation', value: String(getPatientsByStep('consultation').length), color: 'text-secondary' },
+          { label: 'Sortis', value: String(getPatientsByStep('sorti').length), color: 'text-muted-foreground' },
         ].map(s => (
           <Card key={s.label}>
             <CardContent className="p-4 text-center">
