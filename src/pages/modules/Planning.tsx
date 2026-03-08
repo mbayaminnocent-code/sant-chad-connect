@@ -8,184 +8,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { usePatientJourney } from '@/contexts/PatientJourneyContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Calendar, Clock, Users, UserPlus, ArrowRightLeft, Plus, Stethoscope, Scissors, CalendarDays, Send, Coffee, Moon, Shield, Heart, Trash2, Lock } from 'lucide-react';
+import { usePlanning, DOCTORS, JOURS, SERVICES_MAP, ALL_STAFF, type Appointment, type BreakRecord, type DutyRecord, type ScheduleSlot } from '@/contexts/PlanningContext';
+import { Calendar, Clock, Users, UserPlus, ArrowRightLeft, Plus, Stethoscope, Scissors, CalendarDays, Send, Coffee, Moon, Shield, Heart, Trash2, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-
-// ─── Types ───
-interface Doctor {
-  id: string;
-  nom: string;
-  specialite: string;
-  service: string;
-}
-
-interface ScheduleSlot {
-  id: string;
-  doctorId: string;
-  jour: string; // 'lundi' | 'mardi' ...
-  heureDebut: string;
-  heureFin: string;
-  type: 'consultation' | 'operation' | 'garde';
-  salle?: string;
-}
-
-interface Appointment {
-  id: string;
-  patientId: string;
-  patientName: string;
-  nhid: string;
-  doctorId: string;
-  date: string;
-  heure: string;
-  motif: string;
-  statut: 'planifie' | 'confirme' | 'en_cours' | 'termine' | 'annule';
-  type: 'consultation' | 'operation' | 'suivi';
-}
-
-interface Referral {
-  id: string;
-  patientId: string;
-  patientName: string;
-  nhid: string;
-  fromDoctorId: string;
-  toDoctorId: string;
-  motif: string;
-  date: string;
-  statut: 'en_attente' | 'accepte' | 'refuse';
-  notes?: string;
-}
-
-// ─── Staff (nurses + doctors for breaks/duties) ───
-interface StaffMember {
-  id: string;
-  nom: string;
-  role: 'medecin' | 'infirmier';
-  service: string;
-}
-
-interface BreakRecord {
-  id: string;
-  staffId: string;
-  jour: string;
-  heureDebut: string;
-  heureFin: string;
-  type: 'dejeuner' | 'pause_courte' | 'pause_longue';
-  statut: 'planifie' | 'en_cours' | 'termine';
-}
-
-interface DutyRecord {
-  id: string;
-  staffId: string;
-  date: string;
-  heureDebut: string;
-  heureFin: string;
-  type: 'garde_jour' | 'garde_nuit' | 'permanence' | 'astreinte';
-  service: string;
-  statut: 'planifie' | 'en_cours' | 'termine';
-  notes?: string;
-}
-
-// ─── Mock doctors ───
-const DOCTORS: Doctor[] = [
-  { id: 'doc1', nom: 'Dr. Ibrahim Moussa', specialite: 'Médecine Générale', service: 'general' },
-  { id: 'doc2', nom: 'Dr. Hawa Brahim', specialite: 'Gynécologie', service: 'gyneco' },
-  { id: 'doc3', nom: 'Dr. Ali Bichara', specialite: 'Cardiologie', service: 'cardio' },
-  { id: 'doc4', nom: 'Dr. Abdelkrim Saleh', specialite: 'Neurologie', service: 'neuro' },
-  { id: 'doc5', nom: 'Pr. Hassan Ali', specialite: 'Chirurgie Générale', service: 'chirurgie' },
-  { id: 'doc6', nom: 'Dr. Moussa Fadil', specialite: 'Chirurgie Générale', service: 'chirurgie' },
-  { id: 'doc7', nom: 'Dr. Abakar Saleh', specialite: 'Oncologie', service: 'onco' },
-  { id: 'doc8', nom: 'Dr. Fadoul Mahamat', specialite: 'Pédiatrie', service: 'pediatrie' },
-];
-
-const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-
-const SERVICES_MAP: Record<string, string> = {
-  general: 'Médecine Générale', cardio: 'Cardiologie', chirurgie: 'Chirurgie', gyneco: 'Gynécologie',
-  pediatrie: 'Pédiatrie', neuro: 'Neurologie', ortho: 'Orthopédie', pneumo: 'Pneumologie',
-  onco: 'Oncologie', reanimation: 'Réanimation', interne: 'Médecine Interne',
-  ophtalmo: 'Ophtalmologie', uro: 'Urologie', dermato: 'Dermatologie', maternite: 'Maternité',
-};
-
-// ─── Nurses ───
-const NURSES: StaffMember[] = [
-  { id: 'inf1', nom: 'Fatima Ali', role: 'infirmier', service: 'general' },
-  { id: 'inf2', nom: 'Amina Moussa', role: 'infirmier', service: 'cardio' },
-  { id: 'inf3', nom: 'Haoua Brahim', role: 'infirmier', service: 'pediatrie' },
-  { id: 'inf4', nom: 'Zara Idriss', role: 'infirmier', service: 'chirurgie' },
-  { id: 'inf5', nom: 'Khadija Oumar', role: 'infirmier', service: 'gyneco' },
-  { id: 'inf6', nom: 'Moussa Adam', role: 'infirmier', service: 'reanimation' },
-];
-
-const ALL_STAFF: StaffMember[] = [
-  ...DOCTORS.map(d => ({ id: d.id, nom: d.nom, role: 'medecin' as const, service: d.service })),
-  ...NURSES,
-];
-
-// ─── Initial mock data ───
-const INITIAL_SCHEDULES: ScheduleSlot[] = [
-  { id: 'sch1', doctorId: 'doc1', jour: 'Lundi', heureDebut: '08:00', heureFin: '12:00', type: 'consultation', salle: 'Cabinet 1' },
-  { id: 'sch2', doctorId: 'doc1', jour: 'Mercredi', heureDebut: '08:00', heureFin: '12:00', type: 'consultation', salle: 'Cabinet 1' },
-  { id: 'sch3', doctorId: 'doc1', jour: 'Vendredi', heureDebut: '14:00', heureFin: '17:00', type: 'consultation', salle: 'Cabinet 1' },
-  { id: 'sch4', doctorId: 'doc2', jour: 'Mardi', heureDebut: '08:00', heureFin: '13:00', type: 'consultation', salle: 'Cabinet 3' },
-  { id: 'sch5', doctorId: 'doc2', jour: 'Jeudi', heureDebut: '08:00', heureFin: '13:00', type: 'consultation', salle: 'Cabinet 3' },
-  { id: 'sch6', doctorId: 'doc3', jour: 'Lundi', heureDebut: '09:00', heureFin: '12:00', type: 'consultation', salle: 'Cabinet 5' },
-  { id: 'sch7', doctorId: 'doc3', jour: 'Jeudi', heureDebut: '09:00', heureFin: '12:00', type: 'consultation', salle: 'Cabinet 5' },
-  { id: 'sch8', doctorId: 'doc5', jour: 'Mardi', heureDebut: '08:00', heureFin: '14:00', type: 'operation', salle: 'Bloc A' },
-  { id: 'sch9', doctorId: 'doc5', jour: 'Vendredi', heureDebut: '08:00', heureFin: '14:00', type: 'operation', salle: 'Bloc B' },
-  { id: 'sch10', doctorId: 'doc4', jour: 'Lundi', heureDebut: '14:00', heureFin: '17:00', type: 'consultation', salle: 'Cabinet 7' },
-  { id: 'sch11', doctorId: 'doc4', jour: 'Mercredi', heureDebut: '08:00', heureFin: '12:00', type: 'consultation', salle: 'Cabinet 7' },
-  { id: 'sch12', doctorId: 'doc1', jour: 'Samedi', heureDebut: '08:00', heureFin: '20:00', type: 'garde' },
-];
-
-const INITIAL_APPOINTMENTS: Appointment[] = [
-  { id: 'rdv1', patientId: '1', patientName: 'Abdoulaye Mahamat', nhid: 'TCD-2024-00001', doctorId: 'doc1', date: '2026-03-09', heure: '09:00', motif: 'Suivi paludisme sévère', statut: 'confirme', type: 'suivi' },
-  { id: 'rdv2', patientId: '4', patientName: 'Idriss Hassan', nhid: 'TCD-2024-00004', doctorId: 'doc3', date: '2026-03-09', heure: '10:00', motif: 'Contrôle post-IDM', statut: 'planifie', type: 'suivi' },
-  { id: 'rdv3', patientId: '5', patientName: 'Zara Fatimé', nhid: 'TCD-2024-00005', doctorId: 'doc5', date: '2026-03-10', heure: '08:00', motif: 'Ostéosynthèse tibia', statut: 'confirme', type: 'operation' },
-  { id: 'rdv4', patientId: '7', patientName: 'Abakar Khadija', nhid: 'TCD-2024-00007', doctorId: 'doc1', date: '2026-03-09', heure: '10:30', motif: 'Diabète décompensé – bilan', statut: 'planifie', type: 'consultation' },
-];
-
-const INITIAL_REFERRALS: Referral[] = [
-  { id: 'ref1', patientId: '1', patientName: 'Abdoulaye Mahamat', nhid: 'TCD-2024-00001', fromDoctorId: 'doc1', toDoctorId: 'doc3', motif: 'Bilan cardiaque suite paludisme sévère', date: '2026-03-08', statut: 'en_attente' },
-];
-
-const INITIAL_BREAKS: BreakRecord[] = [
-  { id: 'brk1', staffId: 'doc1', jour: 'Lundi', heureDebut: '12:00', heureFin: '13:00', type: 'dejeuner', statut: 'planifie' },
-  { id: 'brk2', staffId: 'doc3', jour: 'Lundi', heureDebut: '12:00', heureFin: '13:00', type: 'dejeuner', statut: 'planifie' },
-  { id: 'brk3', staffId: 'inf1', jour: 'Lundi', heureDebut: '12:30', heureFin: '13:30', type: 'dejeuner', statut: 'planifie' },
-  { id: 'brk4', staffId: 'inf2', jour: 'Mardi', heureDebut: '10:00', heureFin: '10:15', type: 'pause_courte', statut: 'planifie' },
-  { id: 'brk5', staffId: 'inf3', jour: 'Mercredi', heureDebut: '12:00', heureFin: '13:00', type: 'dejeuner', statut: 'planifie' },
-  { id: 'brk6', staffId: 'doc5', jour: 'Mardi', heureDebut: '14:00', heureFin: '14:30', type: 'pause_longue', statut: 'planifie' },
-];
-
-const INITIAL_DUTIES: DutyRecord[] = [
-  { id: 'grd1', staffId: 'doc1', date: '2026-03-08', heureDebut: '08:00', heureFin: '20:00', type: 'garde_jour', service: 'Médecine Générale', statut: 'termine' },
-  { id: 'grd2', staffId: 'doc3', date: '2026-03-08', heureDebut: '20:00', heureFin: '08:00', type: 'garde_nuit', service: 'Cardiologie', statut: 'termine' },
-  { id: 'grd3', staffId: 'inf1', date: '2026-03-09', heureDebut: '08:00', heureFin: '20:00', type: 'permanence', service: 'Médecine Générale', statut: 'planifie' },
-  { id: 'grd4', staffId: 'inf2', date: '2026-03-09', heureDebut: '20:00', heureFin: '08:00', type: 'garde_nuit', service: 'Cardiologie', statut: 'planifie' },
-  { id: 'grd5', staffId: 'doc4', date: '2026-03-10', heureDebut: '20:00', heureFin: '08:00', type: 'astreinte', service: 'Neurologie', statut: 'planifie', notes: 'Joignable par téléphone' },
-  { id: 'grd6', staffId: 'inf4', date: '2026-03-10', heureDebut: '08:00', heureFin: '20:00', type: 'garde_jour', service: 'Chirurgie', statut: 'planifie' },
-  { id: 'grd7', staffId: 'doc5', date: '2026-03-11', heureDebut: '08:00', heureFin: '20:00', type: 'garde_jour', service: 'Chirurgie', statut: 'planifie' },
-  { id: 'grd8', staffId: 'inf6', date: '2026-03-09', heureDebut: '20:00', heureFin: '08:00', type: 'garde_nuit', service: 'Réanimation', statut: 'planifie' },
-];
+import { startOfMonth, endOfMonth, eachDayOfInterval, format, addMonths, subMonths, getDay, isSameDay } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const Planning = () => {
   const { patients } = usePatientJourney();
   const { role, doctorProfile } = useAuth();
+  const {
+    schedules, setSchedules,
+    appointments, setAppointments,
+    referrals, setReferrals,
+    breaks, setBreaks,
+    duties, setDuties,
+    addMedicalNotification,
+  } = usePlanning();
 
-  // Determine editing permissions
   const isDoctor = role === 'doctor';
   const isChefDeService = doctorProfile?.isChefDeService || false;
-  const canEditPlanning = !isDoctor || isChefDeService; // non-doctors (director, nurse) or chef de service can edit
+  const canEditPlanning = !isDoctor || isChefDeService;
   const myDoctorId = doctorProfile?.doctorId || '';
   const myService = doctorProfile?.service || '';
 
-  const [schedules, setSchedules] = useState<ScheduleSlot[]>(INITIAL_SCHEDULES);
-  const [appointments, setAppointments] = useState<Appointment[]>(INITIAL_APPOINTMENTS);
-  const [referrals, setReferrals] = useState<Referral[]>(INITIAL_REFERRALS);
-  const [breaks, setBreaks] = useState<BreakRecord[]>(INITIAL_BREAKS);
-  const [duties, setDuties] = useState<DutyRecord[]>(INITIAL_DUTIES);
   const [selectedDoctor, setSelectedDoctor] = useState<string>(isDoctor && !isChefDeService ? myDoctorId : 'all');
   const [search, setSearch] = useState('');
 
@@ -195,6 +44,9 @@ const Planning = () => {
   const [showReferralDialog, setShowReferralDialog] = useState(false);
   const [showBreakDialog, setShowBreakDialog] = useState(false);
   const [showDutyDialog, setShowDutyDialog] = useState(false);
+
+  // Calendar state
+  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 2, 1)); // March 2026
 
   // Break form
   const [brkStaffId, setBrkStaffId] = useState('');
@@ -260,6 +112,13 @@ const Planning = () => {
     toast.success(`Rendez-vous créé pour ${patient.prenom} ${patient.nom}`, {
       description: `${doc?.nom} – ${apptDate} à ${apptHeure}`,
     });
+    // Send notification to the doctor
+    addMedicalNotification({
+      targetDoctorId: apptDoctorId,
+      type: 'rdv',
+      message: `Nouveau rendez-vous ${apptType}`,
+      detail: `${patient.prenom} ${patient.nom} – ${apptMotif} le ${apptDate} à ${apptHeure}`,
+    });
     setApptPatientId(''); setApptDoctorId(''); setApptDate(''); setApptHeure(''); setApptMotif(''); setApptType('consultation');
   };
 
@@ -294,7 +153,7 @@ const Planning = () => {
       toast.error('Le médecin référent et le destinataire doivent être différents');
       return;
     }
-    const ref: Referral = {
+    const ref = {
       id: `ref-${Date.now()}`,
       patientId: patient.id,
       patientName: `${patient.prenom} ${patient.nom}`,
@@ -303,7 +162,7 @@ const Planning = () => {
       toDoctorId: refToId,
       motif: refMotif,
       date: new Date().toISOString().split('T')[0],
-      statut: 'en_attente',
+      statut: 'en_attente' as const,
       notes: refNotes || undefined,
     };
     setReferrals(prev => [ref, ...prev]);
@@ -313,6 +172,13 @@ const Planning = () => {
     toast.success(`Transfert demandé`, {
       description: `${patient.prenom} ${patient.nom}: ${fromDoc?.nom} → ${toDoc?.nom}`,
     });
+    // Send notification to the target doctor
+    addMedicalNotification({
+      targetDoctorId: refToId,
+      type: 'transfert',
+      message: `Nouveau transfert de patient`,
+      detail: `${patient.prenom} ${patient.nom} référé par ${fromDoc?.nom} – ${refMotif}`,
+    });
     setRefPatientId(''); setRefFromId(''); setRefToId(''); setRefMotif(''); setRefNotes('');
   };
 
@@ -320,7 +186,6 @@ const Planning = () => {
     setReferrals(prev => prev.map(r => r.id === refId ? { ...r, statut: action } : r));
     const ref = referrals.find(r => r.id === refId);
     if (action === 'accepte' && ref) {
-      // Auto-create an appointment for the accepting doctor
       const newAppt: Appointment = {
         id: `rdv-ref-${Date.now()}`,
         patientId: ref.patientId,
@@ -334,6 +199,13 @@ const Planning = () => {
         type: 'consultation',
       };
       setAppointments(prev => [...prev, newAppt]);
+      // Notify the referring doctor
+      addMedicalNotification({
+        targetDoctorId: ref.fromDoctorId,
+        type: 'info',
+        message: `Transfert accepté`,
+        detail: `${ref.patientName} accepté par ${DOCTORS.find(d => d.id === ref.toDoctorId)?.nom}`,
+      });
       toast.success('Transfert accepté – Rendez-vous créé automatiquement');
     } else {
       toast.info('Transfert refusé');
@@ -346,7 +218,6 @@ const Planning = () => {
     toast.success(`Rendez-vous ${labels[statut]}`);
   };
 
-  // ─── Break & Duty Handlers ───
   const handleCreateBreak = () => {
     if (!brkStaffId || !brkJour || !brkDebut || !brkFin) {
       toast.error('Veuillez remplir tous les champs'); return;
@@ -375,6 +246,15 @@ const Planning = () => {
     setShowDutyDialog(false);
     const staff = ALL_STAFF.find(s => s.id === dutyStaffId);
     toast.success(`Garde/permanence ajoutée pour ${staff?.nom}`, { description: `${dutyDate} ${dutyDebut}-${dutyFin}` });
+    // Notify if it's a doctor
+    if (dutyStaffId.startsWith('doc')) {
+      addMedicalNotification({
+        targetDoctorId: dutyStaffId,
+        type: 'garde',
+        message: `Nouvelle garde programmée`,
+        detail: `${dutyType === 'garde_jour' ? 'Garde jour' : dutyType === 'garde_nuit' ? 'Garde nuit' : dutyType === 'permanence' ? 'Permanence' : 'Astreinte'} – ${dutyService} le ${dutyDate}`,
+      });
+    }
     setDutyStaffId(''); setDutyDate(''); setDutyDebut(''); setDutyFin(''); setDutyType('garde_jour'); setDutyService(''); setDutyNotes('');
   };
 
@@ -417,11 +297,9 @@ const Planning = () => {
 
   const filteredAppointments = useMemo(() => {
     let result = appointments;
-    // Regular doctors only see their own appointments
     if (isDoctor && !isChefDeService) {
       result = result.filter(a => a.doctorId === myDoctorId);
     } else if (isDoctor && isChefDeService) {
-      // Chef de service sees their service's doctors
       const serviceDoctorIds = DOCTORS.filter(d => d.service === myService).map(d => d.id);
       if (selectedDoctor !== 'all') result = result.filter(a => a.doctorId === selectedDoctor);
       else result = result.filter(a => serviceDoctorIds.includes(a.doctorId));
@@ -481,10 +359,34 @@ const Planning = () => {
     return <Badge className={`text-[10px] ${styles[type]}`}>{getTypeIcon(type)} {type.charAt(0).toUpperCase() + type.slice(1)}</Badge>;
   };
 
+  // ─── Calendar helpers ───
+  const calendarDays = useMemo(() => {
+    const start = startOfMonth(currentMonth);
+    const end = endOfMonth(currentMonth);
+    return eachDayOfInterval({ start, end });
+  }, [currentMonth]);
+
+  const getDutiesForDay = (day: Date) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    return duties.filter(d => d.date === dateStr);
+  };
+
+  const getDutyColor = (type: DutyRecord['type']) => {
+    switch (type) {
+      case 'garde_jour': return 'bg-primary/20 text-primary border-primary/30';
+      case 'garde_nuit': return 'bg-secondary/20 text-secondary-foreground border-secondary/30';
+      case 'permanence': return 'bg-accent text-accent-foreground border-accent';
+      case 'astreinte': return 'bg-muted text-muted-foreground border-muted-foreground/30';
+    }
+  };
+
   // KPIs
   const todayStr = new Date().toISOString().split('T')[0];
   const todayAppts = appointments.filter(a => a.date === todayStr && a.statut !== 'annule');
   const pendingReferrals = referrals.filter(r => r.statut === 'en_attente');
+
+  // First day offset for calendar grid
+  const firstDayOffset = (getDay(startOfMonth(currentMonth)) + 6) % 7; // Monday = 0
 
   return (
     <div className="p-6 space-y-6">
@@ -550,6 +452,7 @@ const Planning = () => {
         <TabsList className="bg-muted/60 flex-wrap h-auto">
           <TabsTrigger value="rdv">📅 Rendez-vous ({appointments.filter(a => a.statut !== 'annule').length})</TabsTrigger>
           <TabsTrigger value="planning">🕐 Planning</TabsTrigger>
+          <TabsTrigger value="calendrier">📆 Calendrier</TabsTrigger>
           <TabsTrigger value="pauses">☕ Pauses ({breaks.length})</TabsTrigger>
           <TabsTrigger value="gardes">🛡️ Gardes ({duties.length})</TabsTrigger>
           <TabsTrigger value="patients">👥 Patients</TabsTrigger>
@@ -664,6 +567,114 @@ const Planning = () => {
               </Card>
             );
           })}
+        </TabsContent>
+
+        {/* ─── Calendrier mensuel Tab ─── */}
+        <TabsContent value="calendrier" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <Button variant="outline" size="sm" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <CardTitle className="text-lg capitalize">
+                  {format(currentMonth, 'MMMM yyyy', { locale: fr })}
+                </CardTitle>
+                <Button variant="outline" size="sm" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Day headers */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(d => (
+                  <div key={d} className="text-center text-[11px] font-semibold text-muted-foreground py-1">{d}</div>
+                ))}
+              </div>
+              {/* Calendar grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {/* Empty cells for offset */}
+                {Array.from({ length: firstDayOffset }).map((_, i) => (
+                  <div key={`empty-${i}`} className="min-h-[80px] rounded bg-muted/20" />
+                ))}
+                {calendarDays.map(day => {
+                  const dayDuties = getDutiesForDay(day);
+                  const isToday = isSameDay(day, new Date());
+                  return (
+                    <Popover key={day.toISOString()}>
+                      <PopoverTrigger asChild>
+                        <button className={`min-h-[80px] rounded border p-1 text-left transition-colors hover:bg-accent/50 ${
+                          isToday ? 'border-primary bg-primary/5' : 'border-border bg-card'
+                        } ${dayDuties.length > 0 ? 'cursor-pointer' : ''}`}>
+                          <p className={`text-xs font-medium mb-1 ${isToday ? 'text-primary' : 'text-foreground'}`}>
+                            {format(day, 'd')}
+                          </p>
+                          <div className="space-y-0.5">
+                            {dayDuties.slice(0, 3).map(d => {
+                              const staff = ALL_STAFF.find(s => s.id === d.staffId);
+                              return (
+                                <div key={d.id} className={`text-[9px] px-1 py-0.5 rounded border ${getDutyColor(d.type)} truncate`}>
+                                  {d.type === 'garde_jour' ? '☀️' : d.type === 'garde_nuit' ? '🌙' : d.type === 'permanence' ? '🏥' : '📱'}
+                                  {' '}{staff?.nom?.split(' ').pop()}
+                                </div>
+                              );
+                            })}
+                            {dayDuties.length > 3 && (
+                              <p className="text-[9px] text-muted-foreground text-center">+{dayDuties.length - 3} autres</p>
+                            )}
+                          </div>
+                        </button>
+                      </PopoverTrigger>
+                      {dayDuties.length > 0 && (
+                        <PopoverContent className="w-72" align="start">
+                          <div className="space-y-2">
+                            <p className="text-sm font-semibold text-foreground">{format(day, 'EEEE d MMMM', { locale: fr })}</p>
+                            {dayDuties.map(d => {
+                              const staff = ALL_STAFF.find(s => s.id === d.staffId);
+                              return (
+                                <div key={d.id} className="p-2 rounded bg-muted/50 space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium text-foreground">{staff?.nom}</span>
+                                    {getDutyTypeLabel(d.type)}
+                                  </div>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {d.heureDebut} – {d.heureFin} • {d.service}
+                                  </p>
+                                  <Badge className={`text-[9px] ${
+                                    d.statut === 'planifie' ? 'bg-muted text-muted-foreground' :
+                                    d.statut === 'en_cours' ? 'bg-primary/10 text-primary' :
+                                    'bg-secondary/10 text-secondary'
+                                  }`}>
+                                    {d.statut === 'planifie' ? '📅 Planifié' : d.statut === 'en_cours' ? '🔵 En cours' : '✔️ Terminé'}
+                                  </Badge>
+                                  {d.notes && <p className="text-[10px] text-muted-foreground italic">📝 {d.notes}</p>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </PopoverContent>
+                      )}
+                    </Popover>
+                  );
+                })}
+              </div>
+              {/* Legend */}
+              <div className="flex flex-wrap gap-3 mt-4 pt-3 border-t border-border">
+                {[
+                  { icon: '☀️', label: 'Garde jour', style: 'bg-primary/20' },
+                  { icon: '🌙', label: 'Garde nuit', style: 'bg-secondary/20' },
+                  { icon: '🏥', label: 'Permanence', style: 'bg-accent' },
+                  { icon: '📱', label: 'Astreinte', style: 'bg-muted' },
+                ].map(l => (
+                  <div key={l.label} className="flex items-center gap-1.5">
+                    <span className={`w-3 h-3 rounded ${l.style}`} />
+                    <span className="text-[10px] text-muted-foreground">{l.icon} {l.label}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ─── Patients assignés Tab ─── */}
@@ -847,6 +858,8 @@ const Planning = () => {
             </Card>
           )}
         </TabsContent>
+
+        {/* ─── Transferts Tab ─── */}
         <TabsContent value="transferts" className="space-y-4">
           {referrals.length === 0 ? (
             <Card><CardContent className="p-8 text-center text-muted-foreground">Aucun transfert enregistré</CardContent></Card>

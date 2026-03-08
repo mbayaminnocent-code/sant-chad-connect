@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppProvider } from "@/contexts/AppContext";
 import { PatientJourneyProvider } from "@/contexts/PatientJourneyContext";
+import { PlanningProvider, usePlanning } from "@/contexts/PlanningContext";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import TopBar from "@/components/TopBar";
@@ -40,6 +41,22 @@ const AccessDenied = ({ msg }: { msg?: string }) => (
   </div>
 );
 
+const BlocGate = () => {
+  const { role, doctorProfile } = useAuth();
+  const { isDoctorScheduledForBloc } = usePlanning();
+
+  if (role === 'doctor') {
+    const doctorId = doctorProfile?.doctorId || '';
+    if (!isDoctorScheduledForBloc(doctorId)) {
+      return <AccessDenied msg="Vous n'êtes pas programmé au bloc opératoire. Consultez le planning pour voir vos créneaux." />;
+    }
+    return <BlocOperatoire />;
+  }
+
+  if (role === 'director') return <BlocOperatoire />;
+  return <AccessDenied />;
+};
+
 const AppLayout = () => {
   const { role } = useAuth();
   return (
@@ -59,7 +76,7 @@ const AppLayout = () => {
               } />
               <Route path="/espace-medecin" element={role === 'doctor' ? <EspaceMedecin /> : <AccessDenied />} />
               <Route path="/dpi" element={role === 'doctor' ? <DPI /> : <AccessDenied />} />
-              <Route path="/bloc-operatoire" element={['doctor', 'director'].includes(role) ? <BlocOperatoire /> : <AccessDenied />} />
+              <Route path="/bloc-operatoire" element={<BlocGate />} />
               <Route path="/planning" element={<Planning />} />
               <Route path="/patients" element={<PatientsList />} />
               <Route path="/ia" element={<IAMarate />} />
@@ -96,11 +113,13 @@ const App = () => (
       <AuthProvider>
         <AppProvider>
           <PatientJourneyProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/*" element={<AuthGate />} />
-              </Routes>
-            </BrowserRouter>
+            <PlanningProvider>
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/*" element={<AuthGate />} />
+                </Routes>
+              </BrowserRouter>
+            </PlanningProvider>
           </PatientJourneyProvider>
         </AppProvider>
       </AuthProvider>
