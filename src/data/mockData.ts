@@ -14,8 +14,33 @@ export const ROLES: { id: Role; label: string; icon: string }[] = [
   { id: 'minister', label: 'Ministre de la Santé', icon: 'Crown' },
 ];
 
+export interface DoctorProfile {
+  doctorId: string;
+  specialite: string;
+  service: string;
+  isChefDeService: boolean;
+}
+
+export const DOCTOR_PROFILES: Record<string, DoctorProfile> = {
+  admin: { doctorId: 'doc1', specialite: 'Médecine Générale', service: 'general', isChefDeService: true },
+  drHawa: { doctorId: 'doc2', specialite: 'Gynécologie', service: 'gyneco', isChefDeService: true },
+  drAli: { doctorId: 'doc3', specialite: 'Cardiologie', service: 'cardio', isChefDeService: true },
+  drAbdelkrim: { doctorId: 'doc4', specialite: 'Neurologie', service: 'neuro', isChefDeService: true },
+  drHassan: { doctorId: 'doc5', specialite: 'Chirurgie Générale', service: 'chirurgie', isChefDeService: true },
+  drMoussa: { doctorId: 'doc6', specialite: 'Chirurgie Générale', service: 'chirurgie', isChefDeService: false },
+  drAbakar: { doctorId: 'doc7', specialite: 'Oncologie', service: 'onco', isChefDeService: true },
+  drFadoul: { doctorId: 'doc8', specialite: 'Pédiatrie', service: 'pediatrie', isChefDeService: true },
+};
+
 export const USERS: Record<string, { password: string; role: Role; name: string }> = {
   admin: { password: 'admin', role: 'doctor', name: 'Dr. Ibrahim Moussa' },
+  drHawa: { password: 'drHawa', role: 'doctor', name: 'Dr. Hawa Brahim' },
+  drAli: { password: 'drAli', role: 'doctor', name: 'Dr. Ali Bichara' },
+  drAbdelkrim: { password: 'drAbdelkrim', role: 'doctor', name: 'Dr. Abdelkrim Saleh' },
+  drHassan: { password: 'drHassan', role: 'doctor', name: 'Pr. Hassan Ali' },
+  drMoussa: { password: 'drMoussa', role: 'doctor', name: 'Dr. Moussa Fadil' },
+  drAbakar: { password: 'drAbakar', role: 'doctor', name: 'Dr. Abakar Saleh' },
+  drFadoul: { password: 'drFadoul', role: 'doctor', name: 'Dr. Fadoul Mahamat' },
   infirmier: { password: 'infirmier', role: 'nurse', name: 'Fatima Ali' },
   reception: { password: 'reception', role: 'reception', name: 'Amina Hassan' },
   labo: { password: 'labo', role: 'lab', name: 'Oumar Djibrine' },
