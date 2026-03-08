@@ -190,6 +190,10 @@ interface PlanningContextType {
   setBreaks: React.Dispatch<React.SetStateAction<BreakRecord[]>>;
   duties: DutyRecord[];
   setDuties: React.Dispatch<React.SetStateAction<DutyRecord[]>>;
+  dutyExchanges: DutyExchange[];
+  requestDutyExchange: (exchange: Omit<DutyExchange, 'id' | 'date' | 'statut'>) => void;
+  respondToExchange: (exchangeId: string, accept: boolean) => void;
+  validateExchange: (exchangeId: string, approve: boolean) => void;
   medicalNotifications: MedicalNotification[];
   addMedicalNotification: (n: Omit<MedicalNotification, 'id' | 'timestamp' | 'read'>) => void;
   markNotificationRead: (id: string) => void;
