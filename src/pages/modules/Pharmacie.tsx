@@ -15,7 +15,7 @@ import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import {
   Pill, AlertTriangle, TrendingDown, CheckCircle, Package, Send, Search,
   ShoppingCart, Printer, User, Clock, XCircle, Shield, FileText, BarChart3,
-  RefreshCw, Eye, Plus, Minus, Activity, Thermometer, Droplets
+  RefreshCw, Eye, Plus, Minus, Activity, Thermometer, Droplets, Banknote, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 
