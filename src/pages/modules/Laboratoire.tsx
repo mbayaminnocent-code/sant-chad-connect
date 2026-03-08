@@ -1,84 +1,254 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { usePatientJourney } from '@/contexts/PatientJourneyContext';
 import PatientJourneyTracker from '@/components/PatientJourneyTracker';
-import { FlaskConical, Barcode, CheckCircle, Clock, Ban, Search, Send, Eye, FileText } from 'lucide-react';
+import { FlaskConical, CheckCircle, Clock, Search, Send, Play, FileText, AlertTriangle, Plus, Beaker } from 'lucide-react';
 import { toast } from 'sonner';
 
+const EXAM_CATALOG = [
+  { id: 'nfs', name: 'NFS Complète', category: 'Hématologie', params: ['Hémoglobine', 'Globules blancs', 'Plaquettes', 'Hématocrite'] },
+  { id: 'ge', name: 'Goutte Épaisse + Frottis', category: 'Parasitologie', params: ['P. falciparum', 'Densité parasitaire'] },
+  { id: 'glycemie', name: 'Glycémie', category: 'Biochimie', params: ['Glycémie à jeun'] },
+  { id: 'creat', name: 'Créatinine + Urée', category: 'Biochimie', params: ['Créatinine', 'Urée', 'DFG'] },
+  { id: 'bilan_hep', name: 'Bilan Hépatique', category: 'Biochimie', params: ['ALAT', 'ASAT', 'GGT', 'Bilirubine totale'] },
+  { id: 'troponine', name: 'Troponine HS', category: 'Cardiologie', params: ['Troponine HS', 'BNP'] },
+  { id: 'hba1c', name: 'HbA1c', category: 'Biochimie', params: ['HbA1c'] },
+  { id: 'proteinurie', name: 'Protéinurie 24h', category: 'Urines', params: ['Protéinurie', 'Créatininurie'] },
+  { id: 'hemoculture', name: 'Hémocultures', category: 'Microbiologie', params: ['Culture aérobie', 'Culture anaérobie'] },
+  { id: 'bk', name: 'BK Crachats x3', category: 'Microbiologie', params: ['BAAR J1', 'BAAR J2', 'BAAR J3'] },
+  { id: 'ionogramme', name: 'Ionogramme sanguin', category: 'Biochimie', params: ['Na+', 'K+', 'Cl-', 'Ca++'] },
+  { id: 'pcr_meningo', name: 'PCR Méningocoque', category: 'Biologie moléculaire', params: ['PCR N. meningitidis'] },
+];
+
+const NORMAL_VALUES: Record<string, string> = {
+  'Hémoglobine': '13-17 g/dL', 'Globules blancs': '4000-10000/µL', 'Plaquettes': '150000-400000/µL',
+  'Hématocrite': '40-54%', 'P. falciparum': 'Négatif', 'Densité parasitaire': '<0',
+  'Glycémie à jeun': '0.7-1.1 g/L', 'Créatinine': '7-13 mg/L', 'Urée': '0.15-0.45 g/L', 'DFG': '>90 mL/min',
+  'ALAT': '<40 UI/L', 'ASAT': '<40 UI/L', 'GGT': '<50 UI/L', 'Bilirubine totale': '<12 mg/L',
+  'Troponine HS': '<14 ng/L', 'BNP': '<100 pg/mL', 'HbA1c': '<6.5%',
+  'Protéinurie': '<150 mg/24h', 'Créatininurie': '8-18 mmol/24h',
+  'Culture aérobie': 'Négatif', 'Culture anaérobie': 'Négatif',
+  'BAAR J1': 'Négatif', 'BAAR J2': 'Négatif', 'BAAR J3': 'Négatif',
+  'Na+': '135-145 mmol/L', 'K+': '3.5-5 mmol/L', 'Cl-': '95-105 mmol/L', 'Ca++': '2.2-2.6 mmol/L',
+  'PCR N. meningitidis': 'Négatif',
+};
+
+interface PendingExam {
+  id: string;
+  patientId: string;
+  patientName: string;
+  nhid: string;
+  examCatalogId: string;
+  examName: string;
+  category: string;
+  prescriber: string;
+  status: 'pending' | 'in_progress' | 'results_entry' | 'validated' | 'sent_to_dpi';
+  params: string[];
+  results: Record<string, { value: string; status: 'normal' | 'anormal' }>;
+  createdAt: Date;
+  validatedBy?: string;
+}
+
 const Laboratoire = () => {
-  const { patients, advancePatient, getPatientsByStep } = usePatientJourney();
+  const { patients, advancePatient, getPatientsByStep, addLabResult } = usePatientJourney();
   const [searchTerm, setSearchTerm] = useState('');
-  const [scanResult, setScanResult] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('worklist');
+
+  // Exam management state
+  const [pendingExams, setPendingExams] = useState<PendingExam[]>(() => {
+    // Initialize from existing patient consultations
+    const exams: PendingExam[] = [];
+    patients.forEach(p => {
+      p.consultations.forEach(c => {
+        c.examens.forEach((examen, idx) => {
+          const catalogMatch = EXAM_CATALOG.find(e => examen.toLowerCase().includes(e.name.toLowerCase().substring(0, 5)));
+          const hasResult = p.labResults.some(r => r.type.toLowerCase().includes(examen.toLowerCase().substring(0, 5)) && r.statut === 'termine');
+          exams.push({
+            id: `init-${p.id}-${idx}`,
+            patientId: p.id,
+            patientName: `${p.prenom} ${p.nom}`,
+            nhid: p.nhid,
+            examCatalogId: catalogMatch?.id || 'nfs',
+            examName: examen,
+            category: catalogMatch?.category || 'Autre',
+            prescriber: c.docteur,
+            status: hasResult ? 'sent_to_dpi' : 'pending',
+            params: catalogMatch?.params || [examen],
+            results: {},
+            createdAt: new Date(c.date),
+          });
+        });
+      });
+    });
+    return exams;
+  });
+
+  // Dialog states
+  const [showNewExamDialog, setShowNewExamDialog] = useState(false);
+  const [showResultsDialog, setShowResultsDialog] = useState(false);
+  const [selectedExam, setSelectedExam] = useState<PendingExam | null>(null);
+  const [newExamPatientId, setNewExamPatientId] = useState('');
+  const [newExamCatalogId, setNewExamCatalogId] = useState('');
+  const [resultValues, setResultValues] = useState<Record<string, string>>({});
+  const [technicianNote, setTechnicianNote] = useState('');
 
   const patientsAtLab = getPatientsByStep('labo');
 
-  // Build lab requests from consultations
-  const allLabRequests = patients.flatMap(p =>
-    p.consultations.flatMap(c =>
-      c.examens.map((examen, idx) => ({
-        id: `${p.id}-${c.id}-${idx}`,
-        patient: `${p.prenom} ${p.nom}`,
-        patientId: p.id,
-        nhid: p.nhid,
-        examen,
-        docteur: c.docteur,
-        service: c.service,
-        date: c.date,
-        paye: true,
-        statut: p.labResults.some(r => r.type.toLowerCase().includes(examen.toLowerCase().substring(0, 5)) && r.statut === 'termine') ? 'termine' as const :
-               p.labResults.some(r => r.statut === 'en_cours') ? 'en_cours' as const : 'en_attente' as const,
-        urgence: p.urgence,
-      }))
-    )
-  );
-
-  const extraRequests = [
-    { id: 'extra-1', patient: 'Ousmane Djibril', patientId: '8', nhid: 'TCD-2024-00008', examen: 'BK Crachats x3', docteur: 'Dr. Moussa Ali', service: 'Pneumologie', date: '2024-03-08', paye: false, statut: 'en_attente' as const, urgence: 3 as const },
-    { id: 'extra-2', patient: 'Khadija Abakar', patientId: '7', nhid: 'TCD-2024-00007', examen: 'HbA1c + Créatinine', docteur: 'Dr. Ibrahim Moussa', service: 'Médecine Interne', date: '2024-03-08', paye: true, statut: 'en_attente' as const, urgence: 3 as const },
-  ];
-
-  const allRequests = [...allLabRequests, ...extraRequests];
-  const filteredRequests = allRequests.filter(r => {
-    const matchSearch = searchTerm === '' || `${r.patient} ${r.nhid} ${r.examen}`.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatus = filterStatus === 'all' || r.statut === filterStatus;
-    return matchSearch && matchStatus;
+  const filteredExams = pendingExams.filter(e => {
+    const matchSearch = searchTerm === '' || `${e.patientName} ${e.nhid} ${e.examName}`.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchSearch;
   });
 
-  const completedResults = patients.flatMap(p =>
-    p.labResults.filter(r => r.statut === 'termine').map(r => ({
-      ...r, patient: `${p.prenom} ${p.nom}`, nhid: p.nhid, patientId: p.id,
-      docteur: p.consultations[0]?.docteur || 'Dr. inconnu',
-      service: p.consultations[0]?.service || 'N/A',
-    }))
-  );
+  const worklistExams = filteredExams.filter(e => e.status !== 'sent_to_dpi');
+  const completedExams = filteredExams.filter(e => e.status === 'sent_to_dpi' || e.status === 'validated');
 
-  const handleValidateAndSendBack = (patientId: string, patientName: string) => {
-    advancePatient(patientId, 'consultation', 'Laboratoire', 'Résultats validés – Renvoyé au médecin');
+  // Create a new exam request
+  const handleCreateExam = () => {
+    const patient = patients.find(p => p.id === newExamPatientId);
+    const catalog = EXAM_CATALOG.find(c => c.id === newExamCatalogId);
+    if (!patient || !catalog) return;
+
+    const exam: PendingExam = {
+      id: `exam-${Date.now()}`,
+      patientId: patient.id,
+      patientName: `${patient.prenom} ${patient.nom}`,
+      nhid: patient.nhid,
+      examCatalogId: catalog.id,
+      examName: catalog.name,
+      category: catalog.category,
+      prescriber: 'Prescription directe',
+      status: 'pending',
+      params: catalog.params,
+      results: {},
+      createdAt: new Date(),
+    };
+    setPendingExams(prev => [exam, ...prev]);
+    setShowNewExamDialog(false);
+    setNewExamPatientId('');
+    setNewExamCatalogId('');
+    toast.success(`Examen "${catalog.name}" créé pour ${patient.prenom} ${patient.nom}`);
   };
 
-  const sampleSteps = ['Prescription', 'Prélèvement', 'Étiquetage', 'Analyse', 'Validation', 'Envoi DPI'];
+  // Start processing an exam
+  const handleStartExam = (examId: string) => {
+    setPendingExams(prev => prev.map(e => e.id === examId ? { ...e, status: 'in_progress' } : e));
+    toast.info('🧪 Analyse lancée – Prélèvement en cours');
+  };
+
+  // Open results entry dialog
+  const handleOpenResults = (exam: PendingExam) => {
+    setSelectedExam(exam);
+    setResultValues({});
+    setTechnicianNote('');
+    setShowResultsDialog(true);
+  };
+
+  // Save results for an exam
+  const handleSaveResults = () => {
+    if (!selectedExam) return;
+    const results: Record<string, { value: string; status: 'normal' | 'anormal' }> = {};
+    selectedExam.params.forEach(param => {
+      const val = resultValues[param] || '';
+      results[param] = { value: val, status: val.includes('+++') || val.includes('élevé') || val.includes('anormal') || val.includes('Positif') ? 'anormal' : 'normal' };
+    });
+    setPendingExams(prev => prev.map(e =>
+      e.id === selectedExam.id ? { ...e, status: 'results_entry', results } : e
+    ));
+    setShowResultsDialog(false);
+    toast.success('Résultats saisis – En attente de validation biologique');
+  };
+
+  // Validate results (biologiste)
+  const handleValidateResults = (examId: string) => {
+    setPendingExams(prev => prev.map(e =>
+      e.id === examId ? { ...e, status: 'validated', validatedBy: 'Dr. Oumar Djibrine (Biologiste)' } : e
+    ));
+    toast.success('✅ Résultats validés par le biologiste');
+  };
+
+  // Send validated results to DPI
+  const handleSendToDPI = (exam: PendingExam) => {
+    const labResult = {
+      id: `lab-${Date.now()}-${exam.patientId}`,
+      date: new Date().toISOString().split('T')[0],
+      type: exam.examName,
+      statut: 'termine' as const,
+      paye: true,
+      resultats: exam.params.map(param => ({
+        parametre: param,
+        valeur: exam.results[param]?.value || 'N/A',
+        normal: NORMAL_VALUES[param] || 'N/A',
+        statut: exam.results[param]?.status || 'normal' as const,
+      })),
+    };
+    addLabResult(exam.patientId, labResult);
+    setPendingExams(prev => prev.map(e => e.id === exam.id ? { ...e, status: 'sent_to_dpi' } : e));
+    
+    // Check if all exams for this patient are done
+    const patientExams = pendingExams.filter(e => e.patientId === exam.patientId && e.id !== exam.id);
+    const allDone = patientExams.every(e => e.status === 'sent_to_dpi' || e.status === 'validated');
+    
+    if (allDone) {
+      advancePatient(exam.patientId, 'consultation', 'Laboratoire', `Résultats ${exam.examName} validés et envoyés au DPI`);
+    }
+    
+    toast.success(`📋 Résultats "${exam.examName}" envoyés au DPI de ${exam.patientName}`, {
+      description: 'Le médecin peut maintenant consulter les résultats dans le dossier patient'
+    });
+  };
+
+  const getStatusBadge = (status: PendingExam['status']) => {
+    switch (status) {
+      case 'pending': return <Badge variant="secondary" className="text-[10px] gap-1"><Clock className="w-3 h-3" />En attente</Badge>;
+      case 'in_progress': return <Badge className="text-[10px] gap-1 bg-primary animate-pulse"><Beaker className="w-3 h-3" />Analyse en cours</Badge>;
+      case 'results_entry': return <Badge variant="outline" className="text-[10px] gap-1 border-warning text-warning"><FileText className="w-3 h-3" />Résultats à valider</Badge>;
+      case 'validated': return <Badge variant="outline" className="text-[10px] gap-1 border-secondary text-secondary"><CheckCircle className="w-3 h-3" />Validé – À envoyer</Badge>;
+      case 'sent_to_dpi': return <Badge variant="outline" className="text-[10px] gap-1 border-secondary text-secondary"><Send className="w-3 h-3" />Envoyé au DPI</Badge>;
+    }
+  };
+
+  const getActionButton = (exam: PendingExam) => {
+    switch (exam.status) {
+      case 'pending':
+        return <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleStartExam(exam.id)}><Play className="w-3 h-3" />Lancer l'analyse</Button>;
+      case 'in_progress':
+        return <Button size="sm" className="h-7 text-xs gap-1" variant="outline" onClick={() => handleOpenResults(exam)}><FileText className="w-3 h-3" />Saisir résultats</Button>;
+      case 'results_entry':
+        return <Button size="sm" className="h-7 text-xs gap-1 bg-warning text-warning-foreground hover:bg-warning/90" onClick={() => handleValidateResults(exam.id)}><CheckCircle className="w-3 h-3" />Valider (Biologiste)</Button>;
+      case 'validated':
+        return <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleSendToDPI(exam)}><Send className="w-3 h-3" />Envoyer au DPI</Button>;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Laboratoire LIMS</h1>
-        <p className="text-muted-foreground text-sm">Gestion complète des analyses et résultats</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Laboratoire LIMS</h1>
+          <p className="text-muted-foreground text-sm">Workflow complet : Prescription → Prélèvement → Analyse → Validation → DPI</p>
+        </div>
+        <Button className="gap-1" onClick={() => setShowNewExamDialog(true)}>
+          <Plus className="w-4 h-4" /> Nouvel examen
+        </Button>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: 'Patients au labo', value: String(patientsAtLab.length), icon: FlaskConical, color: 'text-primary' },
-          { label: 'En attente', value: String(allRequests.filter(r => r.statut === 'en_attente').length), icon: Clock, color: 'text-warning' },
-          { label: 'Terminées', value: String(completedResults.length), icon: CheckCircle, color: 'text-secondary' },
-          { label: 'Bloquées (impayées)', value: String(allRequests.filter(r => !r.paye).length), icon: Ban, color: 'text-destructive' },
-          { label: 'Envoyées au DPI', value: String(completedResults.length), icon: Send, color: 'text-muted-foreground' },
+          { label: 'Patients au labo', value: patientsAtLab.length, icon: FlaskConical, color: 'text-primary' },
+          { label: 'En attente', value: pendingExams.filter(e => e.status === 'pending').length, icon: Clock, color: 'text-warning' },
+          { label: 'En cours', value: pendingExams.filter(e => e.status === 'in_progress').length, icon: Beaker, color: 'text-primary' },
+          { label: 'À valider', value: pendingExams.filter(e => e.status === 'results_entry').length, icon: AlertTriangle, color: 'text-warning' },
+          { label: 'Envoyés DPI', value: pendingExams.filter(e => e.status === 'sent_to_dpi').length, icon: Send, color: 'text-secondary' },
         ].map(s => (
           <Card key={s.label}>
             <CardContent className="p-4 flex items-center gap-3">
@@ -92,10 +262,10 @@ const Laboratoire = () => {
         ))}
       </div>
 
-      {/* Patients currently at lab with journey */}
+      {/* Patients at lab */}
       {patientsAtLab.length > 0 && (
         <Card className="border-primary/20">
-          <CardHeader><CardTitle className="text-base">🔬 Patients actuellement au Laboratoire</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">🔬 Patients au Laboratoire</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {patientsAtLab.map(p => (
               <div key={p.id} className="p-3 rounded-lg border border-border space-y-2">
@@ -104,9 +274,13 @@ const Laboratoire = () => {
                     <p className="text-sm font-medium text-foreground">{p.prenom} {p.nom}</p>
                     <p className="text-xs text-muted-foreground">{p.nhid} • {p.pathologieActuelle}</p>
                   </div>
-                  <Button size="sm" className="text-xs gap-1 h-7" onClick={() => handleValidateAndSendBack(p.id, `${p.prenom} ${p.nom}`)}>
-                    <Send className="w-3 h-3" /> Résultats → DPI
-                  </Button>
+                  <div className="flex gap-1">
+                    {pendingExams.filter(e => e.patientId === p.id && e.status !== 'sent_to_dpi').length > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {pendingExams.filter(e => e.patientId === p.id && e.status !== 'sent_to_dpi').length} examen(s) en cours
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <PatientJourneyTracker patientId={p.id} showEvents />
               </div>
@@ -115,153 +289,98 @@ const Laboratoire = () => {
         </Card>
       )}
 
-      <Tabs defaultValue="demandes" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="bg-muted/60">
-          <TabsTrigger value="demandes">📋 Demandes</TabsTrigger>
-          <TabsTrigger value="suivi">🔬 Suivi échantillons</TabsTrigger>
-          <TabsTrigger value="resultats">📊 Résultats</TabsTrigger>
+          <TabsTrigger value="worklist">📋 Worklist ({worklistExams.length})</TabsTrigger>
+          <TabsTrigger value="completed">✅ Terminés ({completedExams.length})</TabsTrigger>
           <TabsTrigger value="automates">⚙️ Automates</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="demandes" className="space-y-4">
-          <div className="flex gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Rechercher par patient, NHID ou examen..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-            </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="en_attente">En attente</SelectItem>
-                <SelectItem value="en_cours">En cours</SelectItem>
-                <SelectItem value="termine">Terminé</SelectItem>
-              </SelectContent>
-            </Select>
+        <TabsContent value="worklist" className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Rechercher par patient, NHID ou examen..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
 
-          <div className="space-y-2">
-            {filteredRequests.map(req => (
-              <Card key={req.id} className={`transition-all ${!req.paye ? 'border-destructive/40 bg-destructive/5' : 'hover:border-primary/30'}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className={`w-2 h-8 rounded-full ${req.statut === 'termine' ? 'bg-secondary' : req.statut === 'en_cours' ? 'bg-primary animate-pulse' : 'bg-warning'}`} />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-sm text-foreground">{req.patient}</p>
-                          {req.urgence <= 2 && <Badge variant="destructive" className="text-[9px]">URGENT P{req.urgence}</Badge>}
+          {worklistExams.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-muted-foreground">Aucun examen en cours. Les prescriptions des médecins apparaîtront ici.</CardContent></Card>
+          ) : (
+            <div className="space-y-2">
+              {worklistExams.map(exam => (
+                <Card key={exam.id} className={`transition-all hover:shadow-md ${
+                  exam.status === 'results_entry' ? 'border-warning/50 bg-warning/5' :
+                  exam.status === 'validated' ? 'border-secondary/50 bg-secondary/5' :
+                  exam.status === 'in_progress' ? 'border-primary/30' : ''
+                }`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-sm text-foreground">{exam.patientName}</p>
+                          <Badge variant="outline" className="text-[9px]">{exam.nhid}</Badge>
+                          {getStatusBadge(exam.status)}
                         </div>
-                        <p className="text-xs text-muted-foreground">{req.nhid} • {req.service}</p>
-                        <p className="text-xs text-primary font-medium mt-0.5">{req.examen}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {req.paye ? (
-                        <Badge variant="outline" className="text-[10px] border-secondary/50 text-secondary gap-1"><CheckCircle className="w-3 h-3" /> Payé</Badge>
-                      ) : (
-                        <Badge variant="destructive" className="text-[10px] gap-1"><Ban className="w-3 h-3" /> Non payé</Badge>
-                      )}
-                      {req.statut === 'en_attente' && req.paye && (
-                        <Button size="sm" className="h-7 text-xs" onClick={() => toast.success(`Analyse "${req.examen}" lancée`)}>Lancer</Button>
-                      )}
-                      {req.statut === 'en_cours' && (
-                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => handleValidateAndSendBack(req.patientId, req.patient)}>
-                          <Send className="w-3 h-3" /> Valider → DPI
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="suivi" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2"><Barcode className="w-4 h-4 text-primary" /> Scanner d'échantillon</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-2">
-                <Input placeholder="Scannez le code-barres" value={scanResult} onChange={e => setScanResult(e.target.value)} />
-                <Button onClick={() => { setScanResult('TCD-2024-00001-L001'); toast.info('🔍 Code-barres scanné'); }} variant="outline" className="gap-1"><Barcode className="w-4 h-4" /> Scanner</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Parcours des échantillons</CardTitle>
-              <CardDescription>Traçabilité complète</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {allRequests.filter(r => r.paye).slice(0, 5).map(req => {
-                const currentStep = req.statut === 'termine' ? 5 : req.statut === 'en_cours' ? 3 : 1;
-                return (
-                  <div key={req.id} className="p-3 rounded-lg border border-border">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{req.patient}</p>
-                        <p className="text-xs text-primary">{req.examen}</p>
-                      </div>
-                      <Badge variant="outline" className="text-[10px]">{req.nhid}</Badge>
-                    </div>
-                    <div className="flex items-center gap-0.5">
-                      {sampleSteps.map((step, sIdx) => {
-                        const isPast = sIdx < currentStep;
-                        const isCurrent = sIdx === currentStep;
-                        return (
-                          <div key={step} className="flex items-center flex-1">
-                            <div className="flex flex-col items-center flex-1">
-                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold border-2 ${
-                                isCurrent ? 'bg-primary border-primary text-primary-foreground scale-110 shadow-md' :
-                                isPast ? 'bg-secondary border-secondary text-secondary-foreground' :
-                                'bg-muted border-border text-muted-foreground'
-                              }`}>{isPast ? '✓' : sIdx + 1}</div>
-                              <span className={`text-[8px] mt-0.5 text-center leading-tight ${isCurrent ? 'font-bold text-primary' : 'text-muted-foreground'}`}>{step}</span>
-                            </div>
-                            {sIdx < sampleSteps.length - 1 && <div className={`h-0.5 w-full ${isPast ? 'bg-secondary' : 'bg-border'}`} />}
+                        <p className="text-xs text-primary font-medium">🧪 {exam.examName}</p>
+                        <p className="text-[11px] text-muted-foreground">{exam.category} • Prescrit par {exam.prescriber}</p>
+                        
+                        {/* Show entered results preview */}
+                        {(exam.status === 'results_entry' || exam.status === 'validated') && Object.keys(exam.results).length > 0 && (
+                          <div className="mt-2 p-2 rounded bg-muted/50 space-y-1">
+                            {exam.params.map(param => (
+                              <div key={param} className="flex items-center gap-2 text-xs">
+                                <span className="text-muted-foreground w-32">{param}:</span>
+                                <span className={exam.results[param]?.status === 'anormal' ? 'font-bold text-destructive' : 'text-foreground'}>
+                                  {exam.results[param]?.value || '—'}
+                                </span>
+                                <span className="text-muted-foreground">({NORMAL_VALUES[param] || 'N/A'})</span>
+                                {exam.results[param]?.status === 'anormal' && <Badge variant="destructive" className="text-[8px] h-4">⚠</Badge>}
+                              </div>
+                            ))}
+                            {exam.validatedBy && <p className="text-[10px] text-secondary mt-1">✅ Validé par {exam.validatedBy}</p>}
                           </div>
-                        );
-                      })}
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {getActionButton(exam)}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
-        <TabsContent value="resultats" className="space-y-4">
-          {completedResults.map(result => (
-            <Card key={result.id}>
-              <CardContent className="p-4 space-y-3">
+        <TabsContent value="completed" className="space-y-3">
+          {completedExams.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-muted-foreground">Aucun résultat envoyé au DPI pour le moment.</CardContent></Card>
+          ) : completedExams.map(exam => (
+            <Card key={exam.id}>
+              <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold text-sm text-foreground">{result.patient}</p>
-                    <p className="text-xs text-muted-foreground">{result.nhid} • {result.type} • {result.date}</p>
+                    <p className="font-semibold text-sm text-foreground">{exam.patientName} ({exam.nhid})</p>
+                    <p className="text-xs text-primary">{exam.examName} • {exam.category}</p>
                   </div>
-                  <Badge variant="outline" className="text-[10px] border-primary text-primary gap-1"><Send className="w-3 h-3" />Envoyé au DPI</Badge>
+                  {getStatusBadge(exam.status)}
                 </div>
-                <div className="rounded-lg border border-border overflow-hidden">
-                  <div className="grid grid-cols-4 gap-0 bg-muted/60 text-[10px] font-medium text-muted-foreground p-2">
-                    <span>Paramètre</span><span>Valeur</span><span>Normale</span><span>Statut</span>
-                  </div>
-                  {result.resultats.map((r, i) => (
-                    <div key={i} className={`grid grid-cols-4 gap-0 text-xs p-2 border-t border-border ${r.statut === 'anormal' ? 'bg-destructive/5' : ''}`}>
-                      <span className="text-foreground font-medium">{r.parametre}</span>
-                      <span className={r.statut === 'anormal' ? 'font-bold text-destructive' : 'text-foreground'}>{r.valeur}</span>
-                      <span className="text-muted-foreground">{r.normal}</span>
-                      <Badge variant={r.statut === 'anormal' ? 'destructive' : 'outline'} className="text-[9px] w-fit">{r.statut === 'anormal' ? '⚠ Anormal' : 'Normal'}</Badge>
+                {Object.keys(exam.results).length > 0 && (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <div className="grid grid-cols-4 gap-0 bg-muted/60 text-[10px] font-medium text-muted-foreground p-2">
+                      <span>Paramètre</span><span>Valeur</span><span>Normale</span><span>Statut</span>
                     </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => toast.info('Résultats ouverts dans le DPI')}><Eye className="w-3 h-3" /> Voir dans DPI</Button>
-                  <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => toast.success('Résultats imprimés')}><FileText className="w-3 h-3" /> Imprimer</Button>
-                </div>
+                    {exam.params.map(param => (
+                      <div key={param} className={`grid grid-cols-4 gap-0 text-xs p-2 border-t border-border ${exam.results[param]?.status === 'anormal' ? 'bg-destructive/5' : ''}`}>
+                        <span className="font-medium text-foreground">{param}</span>
+                        <span className={exam.results[param]?.status === 'anormal' ? 'font-bold text-destructive' : 'text-foreground'}>{exam.results[param]?.value || '—'}</span>
+                        <span className="text-muted-foreground">{NORMAL_VALUES[param] || 'N/A'}</span>
+                        <Badge variant={exam.results[param]?.status === 'anormal' ? 'destructive' : 'outline'} className="text-[9px] w-fit">
+                          {exam.results[param]?.status === 'anormal' ? '⚠ Anormal' : 'Normal'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -293,6 +412,88 @@ const Laboratoire = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* New Exam Dialog */}
+      <Dialog open={showNewExamDialog} onOpenChange={setShowNewExamDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Nouvel examen de laboratoire</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Patient</label>
+              <Select value={newExamPatientId} onValueChange={setNewExamPatientId}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner un patient" /></SelectTrigger>
+                <SelectContent>
+                  {patients.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.prenom} {p.nom} – {p.nhid}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Type d'examen</label>
+              <Select value={newExamCatalogId} onValueChange={setNewExamCatalogId}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner un examen" /></SelectTrigger>
+                <SelectContent>
+                  {EXAM_CATALOG.map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.name} ({e.category})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {newExamCatalogId && (
+              <div className="p-3 rounded bg-muted/50">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Paramètres à analyser :</p>
+                {EXAM_CATALOG.find(e => e.id === newExamCatalogId)?.params.map(p => (
+                  <Badge key={p} variant="outline" className="text-[10px] mr-1 mb-1">{p}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewExamDialog(false)}>Annuler</Button>
+            <Button onClick={handleCreateExam} disabled={!newExamPatientId || !newExamCatalogId}>Créer l'examen</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Results Entry Dialog */}
+      <Dialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Saisie des résultats – {selectedExam?.examName}</DialogTitle>
+          </DialogHeader>
+          {selectedExam && (
+            <div className="space-y-4">
+              <div className="p-3 rounded bg-muted/50">
+                <p className="text-sm font-medium text-foreground">{selectedExam.patientName}</p>
+                <p className="text-xs text-muted-foreground">{selectedExam.nhid} • {selectedExam.category}</p>
+              </div>
+              <div className="space-y-3">
+                {selectedExam.params.map(param => (
+                  <div key={param} className="grid grid-cols-3 gap-2 items-center">
+                    <label className="text-xs font-medium text-foreground">{param}</label>
+                    <Input
+                      placeholder="Valeur..."
+                      className="h-8 text-xs"
+                      value={resultValues[param] || ''}
+                      onChange={e => setResultValues(prev => ({ ...prev, [param]: e.target.value }))}
+                    />
+                    <span className="text-[10px] text-muted-foreground">Réf: {NORMAL_VALUES[param] || 'N/A'}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Note du technicien</label>
+                <Textarea placeholder="Observations..." rows={2} value={technicianNote} onChange={e => setTechnicianNote(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowResultsDialog(false)}>Annuler</Button>
+            <Button onClick={handleSaveResults}>Enregistrer les résultats</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
