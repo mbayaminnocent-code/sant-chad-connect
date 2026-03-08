@@ -28,6 +28,20 @@ export interface JourneyEvent {
   details?: string;
 }
 
+export interface PaymentReceipt {
+  id: string;
+  patientId: string;
+  patientName: string;
+  nhid: string;
+  type: 'consultation' | 'labo' | 'pharmacie' | 'imagerie' | 'hospitalisation' | 'autre';
+  items: { label: string; montant: number }[];
+  totalMontant: number;
+  montantPaye: number;
+  modePaiement: string;
+  timestamp: Date;
+  caissier: string;
+}
+
 interface PatientJourneyContextType {
   patients: Patient[];
   getPatientStep: (patientId: string) => JourneyStep;
@@ -43,6 +57,12 @@ interface PatientJourneyContextType {
   updateImagingResult: (patientId: string, imgId: string, updates: Partial<ImagingResult>) => void;
   updatePrescriptionStatus: (patientId: string, prescriptionId: string, statut: 'en_attente' | 'delivre') => void;
   addPrescription: (patientId: string, prescription: Patient['prescriptions'][0]) => void;
+  // Payment receipts
+  paymentReceipts: PaymentReceipt[];
+  addPaymentReceipt: (receipt: PaymentReceipt) => void;
+  getPatientReceipts: (patientId: string) => PaymentReceipt[];
+  hasReceiptForType: (patientId: string, type: PaymentReceipt['type']) => boolean;
+  getReceiptForType: (patientId: string, type: PaymentReceipt['type']) => PaymentReceipt | undefined;
 }
 
 const PatientJourneyContext = createContext<PatientJourneyContextType | null>(null);
@@ -86,6 +106,7 @@ export const PatientJourneyProvider: React.FC<{ children: React.ReactNode }> = (
       details: `Statut initial: ${p.pathologieActuelle}`,
     }));
   });
+  const [paymentReceipts, setPaymentReceipts] = useState<PaymentReceipt[]>([]);
 
   const getPatientStep = useCallback((patientId: string): JourneyStep => {
     const p = patients.find(pt => pt.id === patientId);
@@ -190,6 +211,22 @@ export const PatientJourneyProvider: React.FC<{ children: React.ReactNode }> = (
     return patients.filter(p => mapStatutToStep(p.statut) === step);
   }, [patients]);
 
+  const addPaymentReceipt = useCallback((receipt: PaymentReceipt) => {
+    setPaymentReceipts(prev => [receipt, ...prev]);
+  }, []);
+
+  const getPatientReceipts = useCallback((patientId: string) => {
+    return paymentReceipts.filter(r => r.patientId === patientId);
+  }, [paymentReceipts]);
+
+  const hasReceiptForType = useCallback((patientId: string, type: PaymentReceipt['type']) => {
+    return paymentReceipts.some(r => r.patientId === patientId && r.type === type);
+  }, [paymentReceipts]);
+
+  const getReceiptForType = useCallback((patientId: string, type: PaymentReceipt['type']) => {
+    return paymentReceipts.find(r => r.patientId === patientId && r.type === type);
+  }, [paymentReceipts]);
+
   const recentEvents = journeyEvents.slice(0, 20);
 
   return (
@@ -198,6 +235,7 @@ export const PatientJourneyProvider: React.FC<{ children: React.ReactNode }> = (
       getPatientEvents, registerNewPatient, getPatientsByStep, recentEvents,
       addLabResult, updateLabResult, addImagingResult, updateImagingResult,
       updatePrescriptionStatus, addPrescription,
+      paymentReceipts, addPaymentReceipt, getPatientReceipts, hasReceiptForType, getReceiptForType,
     }}>
       {children}
     </PatientJourneyContext.Provider>
