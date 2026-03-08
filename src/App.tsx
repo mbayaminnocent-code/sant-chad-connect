@@ -89,7 +89,7 @@ const AppLayout = () => {
               <Route path="/facturation" element={['reception', 'director'].includes(role) ? <Facturation /> : <AccessDenied />} />
               <Route path="/hospitalisations" element={role !== 'doctor' ? <Hospitalisations /> : <AccessDenied />} />
               <Route path="/services" element={role !== 'doctor' ? <Services /> : <AccessDenied />} />
-              <Route path="/dashboard-directeur" element={role === 'director' ? <MinistryDashboard /> : <AccessDenied />} />
+              <Route path="/dashboard-directeur" element={role === 'director' ? <DirectorDashboard /> : <AccessDenied />} />
               <Route path="/ministere" element={<MinistryDashboard />} />
               <Route path="/ministere/*" element={<MinistryDashboard />} />
               <Route path="*" element={<NotFound />} />
