@@ -61,6 +61,9 @@ interface PendingExam {
   results: Record<string, { value: string; status: 'normal' | 'anormal' }>;
   createdAt: Date;
   validatedBy?: string;
+  paye: boolean;
+  prix: number;
+  referencePaiement?: string;
 }
 
 const Laboratoire = () => {
