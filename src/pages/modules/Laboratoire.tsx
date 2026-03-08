@@ -433,7 +433,10 @@ const Laboratoire = () => {
                           {getStatusBadge(exam)}
                         </div>
                         <p className="text-xs text-primary font-medium">🧪 {exam.examName}</p>
-                        <p className="text-[11px] text-muted-foreground">{exam.category} • Prescrit par {exam.prescriber}</p>
+                        <p className="text-[11px] text-muted-foreground">{exam.category} • Prescrit par {exam.prescriber} • <span className="font-medium">{exam.prix.toLocaleString()} FCFA</span></p>
+                        {exam.paye && exam.referencePaiement && (
+                          <p className="text-[10px] text-green-600">✅ Payé – Réf: {exam.referencePaiement}</p>
+                        )}
                         
                         {/* Show entered results preview */}
                         {(exam.status === 'results_entry' || exam.status === 'validated') && Object.keys(exam.results).length > 0 && (
