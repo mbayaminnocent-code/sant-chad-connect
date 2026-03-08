@@ -207,6 +207,8 @@ const Laboratoire = () => {
       params: catalog.params,
       results: {},
       createdAt: new Date(),
+      paye: false,
+      prix: EXAM_PRICES[catalog.id] || 8000,
     };
     setPendingExams(prev => [exam, ...prev]);
     setShowNewExamDialog(false);
