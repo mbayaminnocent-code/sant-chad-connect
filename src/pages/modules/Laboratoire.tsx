@@ -217,8 +217,21 @@ const Laboratoire = () => {
     toast.success(`Examen "${catalog.name}" créé pour ${patient.prenom} ${patient.nom}`);
   };
 
+  // Confirm payment for an exam
+  const handleConfirmPayment = (examId: string) => {
+    setPendingExams(prev => prev.map(e => e.id === examId ? { ...e, paye: true, referencePaiement: `REC-${Date.now().toString(36).toUpperCase()}` } : e));
+    toast.success('💰 Paiement confirmé – L\'examen peut être lancé');
+  };
+
   // Start processing an exam
   const handleStartExam = (examId: string) => {
+    const exam = pendingExams.find(e => e.id === examId);
+    if (exam && !exam.paye) {
+      toast.error('❌ Paiement requis avant de lancer l\'analyse', {
+        description: `Montant: ${exam.prix.toLocaleString()} FCFA – Veuillez confirmer le paiement`
+      });
+      return;
+    }
     setPendingExams(prev => prev.map(e => e.id === examId ? { ...e, status: 'in_progress' } : e));
     toast.info('🧪 Analyse lancée – Prélèvement en cours');
   };
