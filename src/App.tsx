@@ -19,6 +19,7 @@ import Pharmacie from "@/pages/modules/Pharmacie";
 import Facturation from "@/pages/modules/Facturation";
 import Hospitalisations from "@/pages/modules/Hospitalisations";
 import BlocOperatoire from "@/pages/modules/BlocOperatoire";
+import Planning from "@/pages/modules/Planning";
 import Services from "@/pages/modules/Services";
 import IAMarate from "@/pages/modules/IAMarate";
 import PatientsList from "@/pages/modules/PatientsList";
@@ -47,6 +48,7 @@ const AppLayout = () => {
               <Route path="/facturation" element={<Facturation />} />
               <Route path="/hospitalisations" element={<Hospitalisations />} />
               <Route path="/bloc-operatoire" element={<BlocOperatoire />} />
+              <Route path="/planning" element={<Planning />} />
               <Route path="/services" element={<Services />} />
               <Route path="/ia" element={<IAMarate />} />
               <Route path="/patients" element={<PatientsList />} />
