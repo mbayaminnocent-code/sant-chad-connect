@@ -12,8 +12,9 @@ import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import {
   ScanLine, Camera, FileImage, Send, Clock, CheckCircle, Search, Eye, Monitor,
   Printer, Play, AlertTriangle, User, Zap, ArrowRight, Activity, ImageIcon,
-  FileText, Layers, Settings, ChevronRight, Plus
+  FileText, Layers, Settings, ChevronRight, Plus, ListOrdered
 } from 'lucide-react';
+import PriorityQueue, { QueueItem } from '@/components/PriorityQueue';
 import { toast } from 'sonner';
 
 const IMAGING_TYPES = [
@@ -438,6 +439,9 @@ const Imagerie = () => {
           <TabsTrigger value="file_attente" className="gap-1.5 text-xs">
             <Layers className="w-3.5 h-3.5" />Demandes ({stats.enAttente})
           </TabsTrigger>
+          <TabsTrigger value="priority_queue" className="gap-1.5 text-xs">
+            <ListOrdered className="w-3.5 h-3.5" />File Prioritaire
+          </TabsTrigger>
           <TabsTrigger value="resultats" className="gap-1.5 text-xs">
             <FileImage className="w-3.5 h-3.5" />Résultats ({stats.termines})
           </TabsTrigger>
@@ -518,6 +522,29 @@ const Imagerie = () => {
                 ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* Priority Queue */}
+        <TabsContent value="priority_queue">
+          <PriorityQueue
+            items={allRequests.map(r => ({
+              id: r.id,
+              patientId: r.patientId,
+              patientName: r.patientName,
+              nhid: r.nhid,
+              urgence: r.urgence,
+              examName: r.examen,
+              status: r.statut === 'en_attente' ? 'waiting' as const : r.statut === 'en_cours' ? 'in_progress' as const : 'done' as const,
+              arrivalTime: new Date(r.date),
+              estimatedDuration: IMAGING_TYPES.find(t => t.value === r.type)?.duree
+                ? parseInt(IMAGING_TYPES.find(t => t.value === r.type)!.duree)
+                : 20,
+            }))}
+            title="File d'attente Imagerie"
+            icon={<ScanLine className="w-4 h-4 text-primary" />}
+            inProgressCount={stats.enCours}
+            maxParallel={EQUIPMENT.filter(e => e.status === 'disponible').length}
+          />
         </TabsContent>
 
         {/* Résultats */}

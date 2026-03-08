@@ -9,14 +9,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { usePatientJourney } from '@/contexts/PatientJourneyContext';
 import PatientJourneyTracker from '@/components/PatientJourneyTracker';
-import { FlaskConical, CheckCircle, Clock, Search, Send, Play, FileText, AlertTriangle, Plus, Beaker, Banknote, ShieldCheck } from 'lucide-react';
+import { FlaskConical, CheckCircle, Clock, Search, Send, Play, FileText, AlertTriangle, Plus, Beaker, Banknote, ShieldCheck, ListOrdered } from 'lucide-react';
 import { toast } from 'sonner';
+import PriorityQueue from '@/components/PriorityQueue';
 
 const EXAM_PRICES: Record<string, number> = {
   'nfs': 8000, 'ge': 5000, 'glycemie': 3000, 'creat': 10000,
   'bilan_hep': 15000, 'troponine': 20000, 'hba1c': 8000,
   'proteinurie': 6000, 'hemoculture': 12000, 'bk': 10000,
   'ionogramme': 12000, 'pcr_meningo': 25000,
+};
+
+const EXAM_DURATIONS: Record<string, number> = {
+  'nfs': 15, 'ge': 20, 'glycemie': 10, 'creat': 20,
+  'bilan_hep': 30, 'troponine': 25, 'hba1c': 15,
+  'proteinurie': 45, 'hemoculture': 60, 'bk': 30,
+  'ionogramme': 20, 'pcr_meningo': 45,
 };
 
 const EXAM_CATALOG = [
@@ -413,6 +421,9 @@ const Laboratoire = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="bg-muted/60">
           <TabsTrigger value="worklist">📋 Worklist ({worklistExams.length})</TabsTrigger>
+          <TabsTrigger value="priority_queue" className="gap-1.5">
+            <ListOrdered className="w-3.5 h-3.5" />File Prioritaire
+          </TabsTrigger>
           <TabsTrigger value="completed">✅ Terminés ({completedExams.length})</TabsTrigger>
           <TabsTrigger value="automates">⚙️ Automates</TabsTrigger>
         </TabsList>
@@ -473,6 +484,28 @@ const Laboratoire = () => {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* Priority Queue */}
+        <TabsContent value="priority_queue">
+          <PriorityQueue
+            items={worklistExams.map(e => ({
+              id: e.id,
+              patientId: e.patientId,
+              patientName: e.patientName,
+              nhid: e.nhid,
+              urgence: patients.find(p => p.id === e.patientId)?.urgence || 4,
+              examName: e.examName,
+              status: e.status === 'pending' ? 'waiting' as const : 
+                     (e.status === 'in_progress' || e.status === 'results_entry') ? 'in_progress' as const : 'done' as const,
+              arrivalTime: e.createdAt,
+              estimatedDuration: EXAM_DURATIONS[e.examCatalogId] || 20,
+            }))}
+            title="File d'attente Laboratoire"
+            icon={<FlaskConical className="w-4 h-4 text-primary" />}
+            inProgressCount={pendingExams.filter(e => e.status === 'in_progress' || e.status === 'results_entry').length}
+            maxParallel={3}
+          />
         </TabsContent>
 
         <TabsContent value="completed" className="space-y-3">
