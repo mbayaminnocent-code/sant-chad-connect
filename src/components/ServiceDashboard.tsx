@@ -372,6 +372,7 @@ export default function ServiceDashboard({ items, serviceName, maxParallel, inPr
           </CardContent>
         </Card>
       </div>
+      </div>
     </div>
   );
 }
