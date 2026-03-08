@@ -12,6 +12,8 @@ import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import { FlaskConical, CheckCircle, Clock, Search, Send, Play, FileText, AlertTriangle, Plus, Beaker, Banknote, ShieldCheck, ListOrdered } from 'lucide-react';
 import { toast } from 'sonner';
 import PriorityQueue from '@/components/PriorityQueue';
+import WaitTimeAlerts from '@/components/WaitTimeAlerts';
+import ServiceDashboard from '@/components/ServiceDashboard';
 
 const EXAM_PRICES: Record<string, number> = {
   'nfs': 8000, 'ge': 5000, 'glycemie': 3000, 'creat': 10000,
@@ -424,6 +426,12 @@ const Laboratoire = () => {
           <TabsTrigger value="priority_queue" className="gap-1.5">
             <ListOrdered className="w-3.5 h-3.5" />File Prioritaire
           </TabsTrigger>
+          <TabsTrigger value="alertes" className="gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" />Alertes
+          </TabsTrigger>
+          <TabsTrigger value="dashboard" className="gap-1.5">
+            📊 Dashboard
+          </TabsTrigger>
           <TabsTrigger value="completed">✅ Terminés ({completedExams.length})</TabsTrigger>
           <TabsTrigger value="automates">⚙️ Automates</TabsTrigger>
         </TabsList>
@@ -505,6 +513,38 @@ const Laboratoire = () => {
             icon={<FlaskConical className="w-4 h-4 text-primary" />}
             inProgressCount={pendingExams.filter(e => e.status === 'in_progress' || e.status === 'results_entry').length}
             maxParallel={3}
+          />
+        </TabsContent>
+
+        {/* Alertes */}
+        <TabsContent value="alertes">
+          <WaitTimeAlerts
+            items={worklistExams.map(e => ({
+              id: e.id, patientId: e.patientId, patientName: e.patientName, nhid: e.nhid,
+              urgence: patients.find(p => p.id === e.patientId)?.urgence || 4,
+              examName: e.examName,
+              status: e.status === 'pending' ? 'waiting' as const : (e.status === 'in_progress' || e.status === 'results_entry') ? 'in_progress' as const : 'done' as const,
+              arrivalTime: e.createdAt,
+              estimatedDuration: EXAM_DURATIONS[e.examCatalogId] || 20,
+            }))}
+            serviceName="Laboratoire"
+          />
+        </TabsContent>
+
+        {/* Dashboard */}
+        <TabsContent value="dashboard">
+          <ServiceDashboard
+            items={worklistExams.map(e => ({
+              id: e.id, patientId: e.patientId, patientName: e.patientName, nhid: e.nhid,
+              urgence: patients.find(p => p.id === e.patientId)?.urgence || 4,
+              examName: e.examName,
+              status: e.status === 'pending' ? 'waiting' as const : (e.status === 'in_progress' || e.status === 'results_entry') ? 'in_progress' as const : 'done' as const,
+              arrivalTime: e.createdAt,
+              estimatedDuration: EXAM_DURATIONS[e.examCatalogId] || 20,
+            }))}
+            serviceName="Laboratoire"
+            maxParallel={3}
+            inProgressCount={pendingExams.filter(e => e.status === 'in_progress' || e.status === 'results_entry').length}
           />
         </TabsContent>
 

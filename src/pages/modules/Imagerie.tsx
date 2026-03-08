@@ -15,6 +15,8 @@ import {
   FileText, Layers, Settings, ChevronRight, Plus, ListOrdered
 } from 'lucide-react';
 import PriorityQueue, { QueueItem } from '@/components/PriorityQueue';
+import WaitTimeAlerts from '@/components/WaitTimeAlerts';
+import ServiceDashboard from '@/components/ServiceDashboard';
 import { toast } from 'sonner';
 
 const IMAGING_TYPES = [
@@ -445,6 +447,12 @@ const Imagerie = () => {
           <TabsTrigger value="resultats" className="gap-1.5 text-xs">
             <FileImage className="w-3.5 h-3.5" />Résultats ({stats.termines})
           </TabsTrigger>
+          <TabsTrigger value="alertes" className="gap-1.5 text-xs">
+            <AlertTriangle className="w-3.5 h-3.5" />Alertes
+          </TabsTrigger>
+          <TabsTrigger value="dashboard" className="gap-1.5 text-xs">
+            <Activity className="w-3.5 h-3.5" />Dashboard
+          </TabsTrigger>
           <TabsTrigger value="equipements" className="gap-1.5 text-xs">
             <Settings className="w-3.5 h-3.5" />Équipements
           </TabsTrigger>
@@ -544,6 +552,36 @@ const Imagerie = () => {
             icon={<ScanLine className="w-4 h-4 text-primary" />}
             inProgressCount={stats.enCours}
             maxParallel={EQUIPMENT.filter(e => e.status === 'disponible').length}
+          />
+        </TabsContent>
+
+        {/* Alertes */}
+        <TabsContent value="alertes">
+          <WaitTimeAlerts
+            items={allRequests.map(r => ({
+              id: r.id, patientId: r.patientId, patientName: r.patientName, nhid: r.nhid,
+              urgence: r.urgence, examName: r.examen,
+              status: r.statut === 'en_attente' ? 'waiting' as const : r.statut === 'en_cours' ? 'in_progress' as const : 'done' as const,
+              arrivalTime: new Date(r.date),
+              estimatedDuration: IMAGING_TYPES.find(t => t.value === r.type)?.duree ? parseInt(IMAGING_TYPES.find(t => t.value === r.type)!.duree) : 20,
+            }))}
+            serviceName="Imagerie"
+          />
+        </TabsContent>
+
+        {/* Dashboard */}
+        <TabsContent value="dashboard">
+          <ServiceDashboard
+            items={allRequests.map(r => ({
+              id: r.id, patientId: r.patientId, patientName: r.patientName, nhid: r.nhid,
+              urgence: r.urgence, examName: r.examen,
+              status: r.statut === 'en_attente' ? 'waiting' as const : r.statut === 'en_cours' ? 'in_progress' as const : 'done' as const,
+              arrivalTime: new Date(r.date),
+              estimatedDuration: IMAGING_TYPES.find(t => t.value === r.type)?.duree ? parseInt(IMAGING_TYPES.find(t => t.value === r.type)!.duree) : 20,
+            }))}
+            serviceName="Imagerie"
+            maxParallel={EQUIPMENT.filter(e => e.status === 'disponible').length}
+            inProgressCount={stats.enCours}
           />
         </TabsContent>
 
