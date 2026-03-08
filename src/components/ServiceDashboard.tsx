@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, Legend,
 } from 'recharts';
-import { Activity, Clock, TrendingDown, TrendingUp, Users, Zap } from 'lucide-react';
+import { Activity, Clock, Download, Loader2, TrendingDown, TrendingUp, Users, Zap } from 'lucide-react';
 import type { QueueItem } from '@/components/PriorityQueue';
 
 interface ServiceDashboardProps {
@@ -32,6 +33,58 @@ const URGENCE_COLORS: Record<number, string> = {
 };
 
 export default function ServiceDashboard({ items, serviceName, maxParallel, inProgressCount }: ServiceDashboardProps) {
+  const dashboardRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportPDF = useCallback(async () => {
+    if (!dashboardRef.current) return;
+    setExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const canvas = await html2canvas(dashboardRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+
+      // Header
+      pdf.setFontSize(16);
+      pdf.text(`Rapport ${serviceName}`, 14, 15);
+      pdf.setFontSize(9);
+      pdf.setTextColor(100);
+      pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, 14, 22);
+
+      // Stats summary
+      const waiting = items.filter(i => i.status === 'waiting').length;
+      const done = items.filter(i => i.status === 'done').length;
+      pdf.setFontSize(10);
+      pdf.setTextColor(0);
+      pdf.text(`En attente: ${waiting}  |  En cours: ${inProgressCount}  |  Traités: ${done}  |  Utilisation: ${maxParallel > 0 ? Math.round((inProgressCount / maxParallel) * 100) : 0}%`, 14, 29);
+
+      // Dashboard image
+      const margin = 14;
+      const topOffset = 34;
+      const availW = pageW - margin * 2;
+      const availH = pageH - topOffset - 10;
+      const ratio = Math.min(availW / canvas.width, availH / canvas.height);
+      const imgW = canvas.width * ratio;
+      const imgH = canvas.height * ratio;
+
+      pdf.addImage(imgData, 'PNG', margin, topOffset, imgW, imgH);
+      pdf.save(`rapport-${serviceName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (err) {
+      console.error('PDF export error:', err);
+    } finally {
+      setExporting(false);
+    }
+  }, [items, serviceName, maxParallel, inProgressCount]);
   // Generate simulated hourly data for the day
   const hourlyFlowData = useMemo(() => {
     const now = new Date();
@@ -119,6 +172,15 @@ export default function ServiceDashboard({ items, serviceName, maxParallel, inPr
 
   return (
     <div className="space-y-4">
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting} className="gap-2">
+          {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {exporting ? 'Génération…' : 'Exporter PDF'}
+        </Button>
+      </div>
+
+      <div ref={dashboardRef} className="space-y-4">
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="border-border/50">
@@ -310,6 +372,7 @@ export default function ServiceDashboard({ items, serviceName, maxParallel, inPr
             </ResponsiveContainer>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
