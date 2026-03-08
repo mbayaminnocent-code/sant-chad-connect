@@ -16,6 +16,7 @@ export const translations = {
     'nav.facturation': 'Facturation & Caisse',
     'nav.hospitalisations': 'Hospitalisations',
     'nav.bloc': 'Bloc Opératoire',
+    'nav.planning': 'Planning Médical',
     'nav.services': 'Services Médicaux',
     'nav.ia': 'IA Marate',
     'nav.dashboard': 'Tableau de Bord',
