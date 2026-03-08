@@ -470,6 +470,7 @@ const Planning = () => {
           <TabsTrigger value="echanges">🔄 Échanges ({dutyExchanges.filter(e => e.statut !== 'valide' && e.statut !== 'refuse').length})</TabsTrigger>
           <TabsTrigger value="patients">👥 Patients</TabsTrigger>
           <TabsTrigger value="transferts">🔄 Transferts ({pendingReferrals.length})</TabsTrigger>
+          <TabsTrigger value="stats">📊 Statistiques</TabsTrigger>
         </TabsList>
 
         {/* ─── Rendez-vous Tab ─── */}
