@@ -350,9 +350,23 @@ const Pharmacie = () => {
                         <Eye className="w-3 h-3" /> Dossier
                       </Button>
                       {patientDisp ? (
-                        <Button size="sm" className="text-xs gap-1 h-7" onClick={() => handleOpenDispense(patientDisp)}>
-                          <ShoppingCart className="w-3 h-3" /> Dispenser
-                        </Button>
+                        <>
+                          {!patientDisp.paye ? (
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="text-[9px] justify-center">{patientDisp.totalPrix.toLocaleString()} FCFA</Badge>
+                              <Button size="sm" className="text-xs gap-1 h-7 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleConfirmPharmacyPayment(patientDisp.id)}>
+                                <Banknote className="w-3 h-3" /> Payer
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="text-[9px] justify-center border-green-500 text-green-600"><ShieldCheck className="w-3 h-3 mr-0.5" />Payé</Badge>
+                              <Button size="sm" className="text-xs gap-1 h-7" onClick={() => handleOpenDispense(patientDisp)}>
+                                <ShoppingCart className="w-3 h-3" /> Dispenser
+                              </Button>
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <Button size="sm" variant="secondary" className="text-xs gap-1 h-7" onClick={() => handleQuickDispense(p.id)}>
                           <Send className="w-3 h-3" /> Sortie
