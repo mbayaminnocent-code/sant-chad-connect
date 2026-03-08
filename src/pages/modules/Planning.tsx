@@ -165,13 +165,21 @@ const INITIAL_DUTIES: DutyRecord[] = [
 
 const Planning = () => {
   const { patients } = usePatientJourney();
+  const { role, doctorProfile } = useAuth();
+
+  // Determine editing permissions
+  const isDoctor = role === 'doctor';
+  const isChefDeService = doctorProfile?.isChefDeService || false;
+  const canEditPlanning = !isDoctor || isChefDeService; // non-doctors (director, nurse) or chef de service can edit
+  const myDoctorId = doctorProfile?.doctorId || '';
+  const myService = doctorProfile?.service || '';
 
   const [schedules, setSchedules] = useState<ScheduleSlot[]>(INITIAL_SCHEDULES);
   const [appointments, setAppointments] = useState<Appointment[]>(INITIAL_APPOINTMENTS);
   const [referrals, setReferrals] = useState<Referral[]>(INITIAL_REFERRALS);
   const [breaks, setBreaks] = useState<BreakRecord[]>(INITIAL_BREAKS);
   const [duties, setDuties] = useState<DutyRecord[]>(INITIAL_DUTIES);
-  const [selectedDoctor, setSelectedDoctor] = useState<string>('all');
+  const [selectedDoctor, setSelectedDoctor] = useState<string>(isDoctor && !isChefDeService ? myDoctorId : 'all');
   const [search, setSearch] = useState('');
 
   // Dialogs
