@@ -152,23 +152,24 @@ const Pharmacie = () => {
     return alerts;
   };
 
-  // Confirm payment for a dispensation
-  const handleConfirmPharmacyPayment = (dispId: string) => {
-    setDispensations(prev => prev.map(d => d.id === dispId ? { ...d, paye: true, referencePaiement: `PHARM-${Date.now().toString(36).toUpperCase()}` } : d));
-    if (selectedDispensation && selectedDispensation.id === dispId) {
-      setSelectedDispensation(prev => prev ? { ...prev, paye: true, referencePaiement: `PHARM-${Date.now().toString(36).toUpperCase()}` } : prev);
-    }
-    toast.success('💰 Paiement médicaments confirmé');
+  // Check if patient has a valid pharmacy receipt from the cashier
+  const isPatientPharmaPaid = (patientId: string): boolean => {
+    return hasReceiptForType(patientId, 'pharmacie');
+  };
+
+  const getPatientPharmaReceipt = (patientId: string) => {
+    return getReceiptForType(patientId, 'pharmacie');
   };
 
   const handleOpenDispense = (disp: DispensationRecord) => {
-    if (!disp.paye) {
-      toast.error('❌ Paiement requis avant la dispensation', {
-        description: `Montant total: ${disp.totalPrix.toLocaleString()} FCFA`
+    if (!isPatientPharmaPaid(disp.patientId)) {
+      toast.error('❌ Reçu de paiement requis', {
+        description: `Le patient doit d'abord payer à la caisse (${disp.totalPrix.toLocaleString()} FCFA). Dirigez-le vers la Facturation.`
       });
       return;
     }
-    const updated = { ...disp, medicaments: disp.medicaments.map(m => ({ ...m, dispensed: false })) };
+    const receipt = getPatientPharmaReceipt(disp.patientId);
+    const updated = { ...disp, paye: true, referencePaiement: receipt?.id, medicaments: disp.medicaments.map(m => ({ ...m, dispensed: false })) };
     setSelectedDispensation(updated);
     setVerificationNotes('');
     
