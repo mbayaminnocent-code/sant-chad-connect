@@ -459,6 +459,7 @@ const Planning = () => {
           <TabsTrigger value="calendrier">📆 Calendrier</TabsTrigger>
           <TabsTrigger value="pauses">☕ Pauses ({breaks.length})</TabsTrigger>
           <TabsTrigger value="gardes">🛡️ Gardes ({duties.length})</TabsTrigger>
+          <TabsTrigger value="echanges">🔄 Échanges ({dutyExchanges.filter(e => e.statut !== 'valide' && e.statut !== 'refuse').length})</TabsTrigger>
           <TabsTrigger value="patients">👥 Patients</TabsTrigger>
           <TabsTrigger value="transferts">🔄 Transferts ({pendingReferrals.length})</TabsTrigger>
         </TabsList>
