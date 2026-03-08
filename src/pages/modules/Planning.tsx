@@ -142,12 +142,34 @@ const INITIAL_REFERRALS: Referral[] = [
   { id: 'ref1', patientId: '1', patientName: 'Abdoulaye Mahamat', nhid: 'TCD-2024-00001', fromDoctorId: 'doc1', toDoctorId: 'doc3', motif: 'Bilan cardiaque suite paludisme sévère', date: '2026-03-08', statut: 'en_attente' },
 ];
 
+const INITIAL_BREAKS: BreakRecord[] = [
+  { id: 'brk1', staffId: 'doc1', jour: 'Lundi', heureDebut: '12:00', heureFin: '13:00', type: 'dejeuner', statut: 'planifie' },
+  { id: 'brk2', staffId: 'doc3', jour: 'Lundi', heureDebut: '12:00', heureFin: '13:00', type: 'dejeuner', statut: 'planifie' },
+  { id: 'brk3', staffId: 'inf1', jour: 'Lundi', heureDebut: '12:30', heureFin: '13:30', type: 'dejeuner', statut: 'planifie' },
+  { id: 'brk4', staffId: 'inf2', jour: 'Mardi', heureDebut: '10:00', heureFin: '10:15', type: 'pause_courte', statut: 'planifie' },
+  { id: 'brk5', staffId: 'inf3', jour: 'Mercredi', heureDebut: '12:00', heureFin: '13:00', type: 'dejeuner', statut: 'planifie' },
+  { id: 'brk6', staffId: 'doc5', jour: 'Mardi', heureDebut: '14:00', heureFin: '14:30', type: 'pause_longue', statut: 'planifie' },
+];
+
+const INITIAL_DUTIES: DutyRecord[] = [
+  { id: 'grd1', staffId: 'doc1', date: '2026-03-08', heureDebut: '08:00', heureFin: '20:00', type: 'garde_jour', service: 'Médecine Générale', statut: 'termine' },
+  { id: 'grd2', staffId: 'doc3', date: '2026-03-08', heureDebut: '20:00', heureFin: '08:00', type: 'garde_nuit', service: 'Cardiologie', statut: 'termine' },
+  { id: 'grd3', staffId: 'inf1', date: '2026-03-09', heureDebut: '08:00', heureFin: '20:00', type: 'permanence', service: 'Médecine Générale', statut: 'planifie' },
+  { id: 'grd4', staffId: 'inf2', date: '2026-03-09', heureDebut: '20:00', heureFin: '08:00', type: 'garde_nuit', service: 'Cardiologie', statut: 'planifie' },
+  { id: 'grd5', staffId: 'doc4', date: '2026-03-10', heureDebut: '20:00', heureFin: '08:00', type: 'astreinte', service: 'Neurologie', statut: 'planifie', notes: 'Joignable par téléphone' },
+  { id: 'grd6', staffId: 'inf4', date: '2026-03-10', heureDebut: '08:00', heureFin: '20:00', type: 'garde_jour', service: 'Chirurgie', statut: 'planifie' },
+  { id: 'grd7', staffId: 'doc5', date: '2026-03-11', heureDebut: '08:00', heureFin: '20:00', type: 'garde_jour', service: 'Chirurgie', statut: 'planifie' },
+  { id: 'grd8', staffId: 'inf6', date: '2026-03-09', heureDebut: '20:00', heureFin: '08:00', type: 'garde_nuit', service: 'Réanimation', statut: 'planifie' },
+];
+
 const Planning = () => {
   const { patients } = usePatientJourney();
 
   const [schedules, setSchedules] = useState<ScheduleSlot[]>(INITIAL_SCHEDULES);
   const [appointments, setAppointments] = useState<Appointment[]>(INITIAL_APPOINTMENTS);
   const [referrals, setReferrals] = useState<Referral[]>(INITIAL_REFERRALS);
+  const [breaks, setBreaks] = useState<BreakRecord[]>(INITIAL_BREAKS);
+  const [duties, setDuties] = useState<DutyRecord[]>(INITIAL_DUTIES);
   const [selectedDoctor, setSelectedDoctor] = useState<string>('all');
   const [search, setSearch] = useState('');
 
@@ -155,6 +177,24 @@ const Planning = () => {
   const [showNewApptDialog, setShowNewApptDialog] = useState(false);
   const [showNewScheduleDialog, setShowNewScheduleDialog] = useState(false);
   const [showReferralDialog, setShowReferralDialog] = useState(false);
+  const [showBreakDialog, setShowBreakDialog] = useState(false);
+  const [showDutyDialog, setShowDutyDialog] = useState(false);
+
+  // Break form
+  const [brkStaffId, setBrkStaffId] = useState('');
+  const [brkJour, setBrkJour] = useState('');
+  const [brkDebut, setBrkDebut] = useState('');
+  const [brkFin, setBrkFin] = useState('');
+  const [brkType, setBrkType] = useState<BreakRecord['type']>('dejeuner');
+
+  // Duty form
+  const [dutyStaffId, setDutyStaffId] = useState('');
+  const [dutyDate, setDutyDate] = useState('');
+  const [dutyDebut, setDutyDebut] = useState('');
+  const [dutyFin, setDutyFin] = useState('');
+  const [dutyType, setDutyType] = useState<DutyRecord['type']>('garde_jour');
+  const [dutyService, setDutyService] = useState('');
+  const [dutyNotes, setDutyNotes] = useState('');
 
   // New appointment form
   const [apptPatientId, setApptPatientId] = useState('');
