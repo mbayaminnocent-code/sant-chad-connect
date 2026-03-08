@@ -272,7 +272,6 @@ const Services = () => {
                           <p className="text-[10px] font-medium text-muted-foreground mb-1.5">PARCOURS DU PATIENT</p>
                           <PatientJourneyTracker patientId={patient.id} compact />
                         </div>
-                        </div>
 
                         {/* Recent consultation */}
                         {patient.consultations.length > 0 && (
