@@ -13,11 +13,12 @@ import { BedDouble, Users, Clock, AlertTriangle, Search, UserCheck, ArrowUpDown,
 import { toast } from 'sonner';
 
 const Hospitalisations = () => {
+  const { patients } = usePatientJourney();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterService, setFilterService] = useState<string>('all');
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
 
-  const hospitalises = MOCK_PATIENTS.filter(p => p.hospitalisations.some(h => h.statut === 'actif'));
+  const hospitalises = patients.filter(p => p.hospitalisations.some(h => h.statut === 'actif'));
 
   const filteredPatients = hospitalises.filter(p => {
     const matchSearch = searchTerm === '' || `${p.prenom} ${p.nom} ${p.nhid}`.toLowerCase().includes(searchTerm.toLowerCase());
