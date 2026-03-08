@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { usePatientJourney } from '@/contexts/PatientJourneyContext';
 import PatientJourneyTracker from '@/components/PatientJourneyTracker';
-import { FlaskConical, CheckCircle, Clock, Search, Send, Play, FileText, AlertTriangle, Plus, Beaker, Banknote, ShieldCheck } from 'lucide-react';
+import { FlaskConical, CheckCircle, Clock, Search, Send, Play, FileText, AlertTriangle, Plus, Beaker, Banknote, ShieldCheck, ListOrdered } from 'lucide-react';
 import { toast } from 'sonner';
+import PriorityQueue from '@/components/PriorityQueue';
 
 const EXAM_PRICES: Record<string, number> = {
   'nfs': 8000, 'ge': 5000, 'glycemie': 3000, 'creat': 10000,
