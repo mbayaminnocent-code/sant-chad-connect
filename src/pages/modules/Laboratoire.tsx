@@ -298,8 +298,11 @@ const Laboratoire = () => {
     });
   };
 
-  const getStatusBadge = (status: PendingExam['status']) => {
-    switch (status) {
+  const getStatusBadge = (exam: PendingExam) => {
+    if (exam.status === 'pending' && !exam.paye) {
+      return <Badge variant="destructive" className="text-[10px] gap-1"><Banknote className="w-3 h-3" />Non payé</Badge>;
+    }
+    switch (exam.status) {
       case 'pending': return <Badge variant="secondary" className="text-[10px] gap-1"><Clock className="w-3 h-3" />En attente</Badge>;
       case 'in_progress': return <Badge className="text-[10px] gap-1 bg-primary animate-pulse"><Beaker className="w-3 h-3" />Analyse en cours</Badge>;
       case 'results_entry': return <Badge variant="outline" className="text-[10px] gap-1 border-warning text-warning"><FileText className="w-3 h-3" />Résultats à valider</Badge>;
@@ -311,7 +314,22 @@ const Laboratoire = () => {
   const getActionButton = (exam: PendingExam) => {
     switch (exam.status) {
       case 'pending':
-        return <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleStartExam(exam.id)}><Play className="w-3 h-3" />Lancer l'analyse</Button>;
+        if (!exam.paye) {
+          return (
+            <div className="flex flex-col gap-1">
+              <Badge variant="outline" className="text-[9px] justify-center">{exam.prix.toLocaleString()} FCFA</Badge>
+              <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleConfirmPayment(exam.id)}>
+                <Banknote className="w-3 h-3" />Confirmer paiement
+              </Button>
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge variant="outline" className="text-[9px] justify-center border-green-500 text-green-600"><ShieldCheck className="w-3 h-3 mr-0.5" />Payé</Badge>
+            <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleStartExam(exam.id)}><Play className="w-3 h-3" />Lancer l'analyse</Button>
+          </div>
+        );
       case 'in_progress':
         return <Button size="sm" className="h-7 text-xs gap-1" variant="outline" onClick={() => handleOpenResults(exam)}><FileText className="w-3 h-3" />Saisir résultats</Button>;
       case 'results_entry':
