@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { MOCK_PATIENTS, Patient } from '@/data/mockData';
+import { MOCK_PATIENTS, Patient, LabResult, ImagingResult } from '@/data/mockData';
 import { toast } from 'sonner';
 
 export type JourneyStep = 'accueil' | 'paiement' | 'triage' | 'consultation' | 'labo' | 'imagerie' | 'pharmacie' | 'hospitalise' | 'sorti';
@@ -37,6 +37,12 @@ interface PatientJourneyContextType {
   registerNewPatient: (data: { nom: string; prenom: string; age: number; telephone: string }) => Patient;
   getPatientsByStep: (step: JourneyStep) => Patient[];
   recentEvents: JourneyEvent[];
+  addLabResult: (patientId: string, result: LabResult) => void;
+  updateLabResult: (patientId: string, labId: string, updates: Partial<LabResult>) => void;
+  addImagingResult: (patientId: string, result: ImagingResult) => void;
+  updateImagingResult: (patientId: string, imgId: string, updates: Partial<ImagingResult>) => void;
+  updatePrescriptionStatus: (patientId: string, prescriptionId: string, statut: 'en_attente' | 'delivre') => void;
+  addPrescription: (patientId: string, prescription: Patient['prescriptions'][0]) => void;
 }
 
 const PatientJourneyContext = createContext<PatientJourneyContextType | null>(null);
@@ -68,7 +74,6 @@ const mapStepToStatut = (step: JourneyStep): Patient['statut'] => {
 export const PatientJourneyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [patients, setPatients] = useState<Patient[]>([...MOCK_PATIENTS]);
   const [journeyEvents, setJourneyEvents] = useState<JourneyEvent[]>(() => {
-    // Seed initial events from existing patients
     return MOCK_PATIENTS.filter(p => p.statut !== 'attente').map(p => ({
       id: `init-${p.id}`,
       patientId: p.id,
@@ -102,12 +107,10 @@ export const PatientJourneyProvider: React.FC<{ children: React.ReactNode }> = (
         module, details,
       };
       setJourneyEvents(prev => [event, ...prev]);
-
       const stepLabel = JOURNEY_STEPS.find(s => s.key === to);
       toast.success(`${p.prenom} ${p.nom} → ${stepLabel?.label}`, {
         description: `${stepLabel?.icon} Transféré depuis ${module}${details ? ` – ${details}` : ''}`,
       });
-
       return { ...p, statut: mapStepToStatut(to) };
     }));
   }, []);
@@ -124,19 +127,60 @@ export const PatientJourneyProvider: React.FC<{ children: React.ReactNode }> = (
     };
     setPatients(prev => [...prev, newPatient]);
     const event: JourneyEvent = {
-      id: `evt-reg-${id}`,
-      patientId: id,
-      patientName: `${data.prenom} ${data.nom}`,
-      nhid,
-      from: 'accueil', to: 'accueil',
-      timestamp: new Date(),
-      module: 'Accueil',
-      details: 'Nouveau patient enregistré',
+      id: `evt-reg-${id}`, patientId: id,
+      patientName: `${data.prenom} ${data.nom}`, nhid,
+      from: 'accueil', to: 'accueil', timestamp: new Date(),
+      module: 'Accueil', details: 'Nouveau patient enregistré',
     };
     setJourneyEvents(prev => [event, ...prev]);
     toast.success('Patient enregistré!', { description: `ID: ${nhid}` });
     return newPatient;
   }, [patients.length]);
+
+  const addLabResult = useCallback((patientId: string, result: LabResult) => {
+    setPatients(prev => prev.map(p =>
+      p.id === patientId ? { ...p, labResults: [...p.labResults, result] } : p
+    ));
+  }, []);
+
+  const updateLabResult = useCallback((patientId: string, labId: string, updates: Partial<LabResult>) => {
+    setPatients(prev => prev.map(p =>
+      p.id === patientId ? {
+        ...p,
+        labResults: p.labResults.map(l => l.id === labId ? { ...l, ...updates } : l)
+      } : p
+    ));
+  }, []);
+
+  const addImagingResult = useCallback((patientId: string, result: ImagingResult) => {
+    setPatients(prev => prev.map(p =>
+      p.id === patientId ? { ...p, imagingResults: [...p.imagingResults, result] } : p
+    ));
+  }, []);
+
+  const updateImagingResult = useCallback((patientId: string, imgId: string, updates: Partial<ImagingResult>) => {
+    setPatients(prev => prev.map(p =>
+      p.id === patientId ? {
+        ...p,
+        imagingResults: p.imagingResults.map(i => i.id === imgId ? { ...i, ...updates } : i)
+      } : p
+    ));
+  }, []);
+
+  const updatePrescriptionStatus = useCallback((patientId: string, prescriptionId: string, statut: 'en_attente' | 'delivre') => {
+    setPatients(prev => prev.map(p =>
+      p.id === patientId ? {
+        ...p,
+        prescriptions: p.prescriptions.map(pr => pr.id === prescriptionId ? { ...pr, statut } : pr)
+      } : p
+    ));
+  }, []);
+
+  const addPrescription = useCallback((patientId: string, prescription: Patient['prescriptions'][0]) => {
+    setPatients(prev => prev.map(p =>
+      p.id === patientId ? { ...p, prescriptions: [...p.prescriptions, prescription] } : p
+    ));
+  }, []);
 
   const getPatientEvents = useCallback((patientId: string) => {
     return journeyEvents.filter(e => e.patientId === patientId);
@@ -152,6 +196,8 @@ export const PatientJourneyProvider: React.FC<{ children: React.ReactNode }> = (
     <PatientJourneyContext.Provider value={{
       patients, getPatientStep, advancePatient, journeyEvents,
       getPatientEvents, registerNewPatient, getPatientsByStep, recentEvents,
+      addLabResult, updateLabResult, addImagingResult, updateImagingResult,
+      updatePrescriptionStatus, addPrescription,
     }}>
       {children}
     </PatientJourneyContext.Provider>
