@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/sidebar';
 import {
   Home, Users, FileText, FlaskConical, ScanLine, Pill, Banknote, BedDouble,
-  Scissors, Brain, Stethoscope, Activity, BarChart3, Shield, HeartPulse
+  Scissors, Brain, Stethoscope, Activity, BarChart3, Shield, HeartPulse, CalendarDays
 } from 'lucide-react';
 import type { Role } from '@/data/mockData';
 import type { TranslationKey } from '@/i18n/translations';
