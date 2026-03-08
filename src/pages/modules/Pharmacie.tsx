@@ -152,7 +152,22 @@ const Pharmacie = () => {
     return alerts;
   };
 
+  // Confirm payment for a dispensation
+  const handleConfirmPharmacyPayment = (dispId: string) => {
+    setDispensations(prev => prev.map(d => d.id === dispId ? { ...d, paye: true, referencePaiement: `PHARM-${Date.now().toString(36).toUpperCase()}` } : d));
+    if (selectedDispensation && selectedDispensation.id === dispId) {
+      setSelectedDispensation(prev => prev ? { ...prev, paye: true, referencePaiement: `PHARM-${Date.now().toString(36).toUpperCase()}` } : prev);
+    }
+    toast.success('💰 Paiement médicaments confirmé');
+  };
+
   const handleOpenDispense = (disp: DispensationRecord) => {
+    if (!disp.paye) {
+      toast.error('❌ Paiement requis avant la dispensation', {
+        description: `Montant total: ${disp.totalPrix.toLocaleString()} FCFA`
+      });
+      return;
+    }
     const updated = { ...disp, medicaments: disp.medicaments.map(m => ({ ...m, dispensed: false })) };
     setSelectedDispensation(updated);
     setVerificationNotes('');
