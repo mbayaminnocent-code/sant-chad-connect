@@ -56,6 +56,18 @@ interface StockMovement {
   pharmacist: string;
 }
 
+const MED_PRICES: Record<string, number> = {
+  'Artésunate': 3500, 'Paracétamol': 500, 'Ceftriaxone': 4000, 'Amoxicilline': 1500,
+  'Métronidazole': 1000, 'Insuline': 8000, 'Aspirine': 300, 'Clopidogrel': 2500,
+  'Morphine': 5000, 'Diazépam': 1500, 'Ibuprofène': 800, 'Atorvastatine': 2000,
+  'Nicardipine': 3000, 'Sulfate de Magnésium': 2500, 'Héparine': 6000,
+};
+
+const getMedPrice = (nom: string): number => {
+  const baseName = nom.split(' ')[0];
+  return MED_PRICES[baseName] || 1500;
+};
+
 const Pharmacie = () => {
   const { patients, advancePatient, getPatientsByStep, updatePrescriptionStatus } = usePatientJourney();
   const [searchTerm, setSearchTerm] = useState('');
