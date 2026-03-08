@@ -663,7 +663,154 @@ const Planning = () => {
           })}
         </TabsContent>
 
-        {/* ─── Transferts Tab ─── */}
+        {/* ─── Pauses Tab ─── */}
+        <TabsContent value="pauses" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Gestion des heures de pause pour médecins et infirmiers</p>
+            <Button size="sm" className="gap-1" onClick={() => setShowBreakDialog(true)}>
+              <Plus className="w-4 h-4" /> Ajouter une pause
+            </Button>
+          </div>
+
+          {JOURS.map(jour => {
+            const jourBreaks = breaks.filter(b => b.jour === jour);
+            if (jourBreaks.length === 0) return null;
+            return (
+              <Card key={jour}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Coffee className="w-4 h-4 text-primary" /> {jour}
+                    <Badge variant="outline" className="text-[10px]">{jourBreaks.length} pauses</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Personnel</TableHead>
+                        <TableHead>Rôle</TableHead>
+                        <TableHead>Horaire</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {jourBreaks.map(brk => {
+                        const staff = ALL_STAFF.find(s => s.id === brk.staffId);
+                        return (
+                          <TableRow key={brk.id}>
+                            <TableCell className="text-sm font-medium">{staff?.nom || '—'}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-[10px]">
+                                {staff?.role === 'medecin' ? '🩺 Médecin' : '💉 Infirmier'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{brk.heureDebut} – {brk.heureFin}</TableCell>
+                            <TableCell>{getBreakTypeLabel(brk.type)}</TableCell>
+                            <TableCell>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => handleDeleteBreak(brk.id)}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            );
+          })}
+          {breaks.length === 0 && (
+            <Card><CardContent className="p-8 text-center text-muted-foreground">Aucune pause programmée</CardContent></Card>
+          )}
+        </TabsContent>
+
+        {/* ─── Gardes & Permanences Tab ─── */}
+        <TabsContent value="gardes" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Gardes de jour/nuit, permanences et astreintes</p>
+            <Button size="sm" className="gap-1" onClick={() => setShowDutyDialog(true)}>
+              <Plus className="w-4 h-4" /> Ajouter une garde
+            </Button>
+          </div>
+
+          <div className="rounded-md border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Personnel</TableHead>
+                  <TableHead>Rôle</TableHead>
+                  <TableHead>Horaire</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Service</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {duties.length === 0 ? (
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Aucune garde programmée</TableCell></TableRow>
+                ) : [...duties].sort((a, b) => a.date.localeCompare(b.date)).map(duty => {
+                  const staff = ALL_STAFF.find(s => s.id === duty.staffId);
+                  return (
+                    <TableRow key={duty.id} className={duty.statut === 'termine' ? 'opacity-50' : ''}>
+                      <TableCell className="text-sm font-medium">{duty.date}</TableCell>
+                      <TableCell className="text-sm font-medium">{staff?.nom || '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px]">
+                          {staff?.role === 'medecin' ? '🩺 Médecin' : '💉 Infirmier'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">{duty.heureDebut} – {duty.heureFin}</TableCell>
+                      <TableCell>{getDutyTypeLabel(duty.type)}</TableCell>
+                      <TableCell className="text-sm">{duty.service}</TableCell>
+                      <TableCell>
+                        <Badge className={`text-[10px] ${
+                          duty.statut === 'planifie' ? 'bg-muted text-muted-foreground' :
+                          duty.statut === 'en_cours' ? 'bg-primary/10 text-primary' :
+                          'bg-secondary/10 text-secondary'
+                        }`}>
+                          {duty.statut === 'planifie' ? '📅 Planifié' : duty.statut === 'en_cours' ? '🔵 En cours' : '✔️ Terminé'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {duty.statut === 'planifie' && (
+                            <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={() => handleDutyStatusChange(duty.id, 'en_cours')}>Démarrer</Button>
+                          )}
+                          {duty.statut === 'en_cours' && (
+                            <Button size="sm" variant="secondary" className="text-[10px] h-7" onClick={() => handleDutyStatusChange(duty.id, 'termine')}>Terminer</Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => handleDeleteDuty(duty.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {duties.some(d => d.notes) && (
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">📝 Notes sur les gardes</CardTitle></CardHeader>
+              <CardContent className="space-y-1">
+                {duties.filter(d => d.notes).map(d => {
+                  const staff = ALL_STAFF.find(s => s.id === d.staffId);
+                  return (
+                    <p key={d.id} className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">{staff?.nom}</span> ({d.date}): {d.notes}
+                    </p>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
         <TabsContent value="transferts" className="space-y-4">
           {referrals.length === 0 ? (
             <Card><CardContent className="p-8 text-center text-muted-foreground">Aucun transfert enregistré</CardContent></Card>
