@@ -217,23 +217,29 @@ const Laboratoire = () => {
     toast.success(`Examen "${catalog.name}" créé pour ${patient.prenom} ${patient.nom}`);
   };
 
-  // Confirm payment for an exam
-  const handleConfirmPayment = (examId: string) => {
-    setPendingExams(prev => prev.map(e => e.id === examId ? { ...e, paye: true, referencePaiement: `REC-${Date.now().toString(36).toUpperCase()}` } : e));
-    toast.success('💰 Paiement confirmé – L\'examen peut être lancé');
+  // Check if patient has a valid receipt from the cashier
+  const isPatientLabPaid = (patientId: string): boolean => {
+    return hasReceiptForType(patientId, 'labo');
+  };
+
+  const getPatientLabReceipt = (patientId: string) => {
+    return getReceiptForType(patientId, 'labo');
   };
 
   // Start processing an exam
   const handleStartExam = (examId: string) => {
     const exam = pendingExams.find(e => e.id === examId);
-    if (exam && !exam.paye) {
-      toast.error('❌ Paiement requis avant de lancer l\'analyse', {
-        description: `Montant: ${exam.prix.toLocaleString()} FCFA – Veuillez confirmer le paiement`
+    if (!exam) return;
+    
+    if (!isPatientLabPaid(exam.patientId)) {
+      toast.error('❌ Reçu de paiement requis', {
+        description: `Le patient doit d'abord payer à la caisse (${exam.prix.toLocaleString()} FCFA). Envoyez-le à la Facturation.`
       });
       return;
     }
+    setPendingExams(prev => prev.map(e => e.id === examId ? { ...e, paye: true, referencePaiement: getPatientLabReceipt(exam.patientId)?.id } : e));
     setPendingExams(prev => prev.map(e => e.id === examId ? { ...e, status: 'in_progress' } : e));
-    toast.info('🧪 Analyse lancée – Prélèvement en cours');
+    toast.info('🧪 Analyse lancée – Reçu vérifié ✓');
   };
 
   // Open results entry dialog
