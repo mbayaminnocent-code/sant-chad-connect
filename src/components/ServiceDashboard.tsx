@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, Legend,
 } from 'recharts';
-import { Activity, Clock, TrendingDown, TrendingUp, Users, Zap } from 'lucide-react';
+import { Activity, Clock, Download, Loader2, TrendingDown, TrendingUp, Users, Zap } from 'lucide-react';
 import type { QueueItem } from '@/components/PriorityQueue';
 
 interface ServiceDashboardProps {
