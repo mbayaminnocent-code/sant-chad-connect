@@ -67,7 +67,7 @@ interface PendingExam {
 }
 
 const Laboratoire = () => {
-  const { patients, advancePatient, getPatientsByStep, addLabResult } = usePatientJourney();
+  const { patients, advancePatient, getPatientsByStep, addLabResult, hasReceiptForType, getReceiptForType } = usePatientJourney();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('worklist');
 
