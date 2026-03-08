@@ -447,6 +447,12 @@ const Imagerie = () => {
           <TabsTrigger value="resultats" className="gap-1.5 text-xs">
             <FileImage className="w-3.5 h-3.5" />Résultats ({stats.termines})
           </TabsTrigger>
+          <TabsTrigger value="alertes" className="gap-1.5 text-xs">
+            <AlertTriangle className="w-3.5 h-3.5" />Alertes
+          </TabsTrigger>
+          <TabsTrigger value="dashboard" className="gap-1.5 text-xs">
+            <Activity className="w-3.5 h-3.5" />Dashboard
+          </TabsTrigger>
           <TabsTrigger value="equipements" className="gap-1.5 text-xs">
             <Settings className="w-3.5 h-3.5" />Équipements
           </TabsTrigger>
