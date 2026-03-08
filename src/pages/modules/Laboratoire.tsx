@@ -430,7 +430,7 @@ const Laboratoire = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-sm text-foreground">{exam.patientName}</p>
                           <Badge variant="outline" className="text-[9px]">{exam.nhid}</Badge>
-                          {getStatusBadge(exam.status)}
+                          {getStatusBadge(exam)}
                         </div>
                         <p className="text-xs text-primary font-medium">🧪 {exam.examName}</p>
                         <p className="text-[11px] text-muted-foreground">{exam.category} • Prescrit par {exam.prescriber}</p>
