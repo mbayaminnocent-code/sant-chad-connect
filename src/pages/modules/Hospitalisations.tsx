@@ -258,33 +258,10 @@ const Hospitalisations = () => {
                           )}
                         </div>
 
-                        {/* Patient journey in hospitalization */}
+                        {/* Patient journey */}
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-2">PARCOURS D'HOSPITALISATION</p>
-                          <div className="flex items-center gap-1">
-                            {patientSteps.map((step, idx) => {
-                              const currentStep = Math.min(Math.floor(daysIn / 1.5) + 1, patientSteps.length - 1);
-                              const isPast = idx < currentStep;
-                              const isCurrent = idx === currentStep;
-                              return (
-                                <div key={step} className="flex items-center flex-1">
-                                  <div className="flex flex-col items-center flex-1">
-                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${
-                                      isCurrent ? 'bg-primary border-primary text-primary-foreground shadow-md scale-110' :
-                                      isPast ? 'bg-secondary border-secondary text-secondary-foreground' :
-                                      'bg-muted border-border text-muted-foreground'
-                                    }`}>
-                                      {isPast ? '✓' : idx + 1}
-                                    </div>
-                                    <span className={`text-[9px] mt-1 text-center ${isCurrent ? 'font-bold text-primary' : 'text-muted-foreground'}`}>{step}</span>
-                                  </div>
-                                  {idx < patientSteps.length - 1 && (
-                                    <div className={`h-0.5 w-full ${isPast ? 'bg-secondary' : 'bg-border'}`} />
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
+                          <p className="text-xs font-medium text-muted-foreground mb-2">PARCOURS COMPLET DU PATIENT</p>
+                          <PatientJourneyTracker patientId={patient.id} showEvents />
                         </div>
 
                         {/* Consultations & lab results */}
