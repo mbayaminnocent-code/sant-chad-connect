@@ -15,6 +15,8 @@ import {
   FileText, Layers, Settings, ChevronRight, Plus, ListOrdered
 } from 'lucide-react';
 import PriorityQueue, { QueueItem } from '@/components/PriorityQueue';
+import WaitTimeAlerts from '@/components/WaitTimeAlerts';
+import ServiceDashboard from '@/components/ServiceDashboard';
 import { toast } from 'sonner';
 
 const IMAGING_TYPES = [
