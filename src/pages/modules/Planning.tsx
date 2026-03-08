@@ -45,6 +45,14 @@ const Planning = () => {
   const [showReferralDialog, setShowReferralDialog] = useState(false);
   const [showBreakDialog, setShowBreakDialog] = useState(false);
   const [showDutyDialog, setShowDutyDialog] = useState(false);
+  const [showExchangeDialog, setShowExchangeDialog] = useState(false);
+
+  // Exchange form
+  const [exchRequesterId, setExchRequesterId] = useState('');
+  const [exchRequesterDutyId, setExchRequesterDutyId] = useState('');
+  const [exchTargetId, setExchTargetId] = useState('');
+  const [exchTargetDutyId, setExchTargetDutyId] = useState('');
+  const [exchMotif, setExchMotif] = useState('');
 
   // Calendar state
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 2, 1)); // March 2026
