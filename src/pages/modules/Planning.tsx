@@ -1298,6 +1298,92 @@ const Planning = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Exchange Dialog ─── */}
+      <Dialog open={showExchangeDialog} onOpenChange={setShowExchangeDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Demander un échange de garde</DialogTitle></DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Demandeur *</label>
+              <Select value={exchRequesterId} onValueChange={(v) => { setExchRequesterId(v); setExchRequesterDutyId(''); }}>
+                <SelectTrigger><SelectValue placeholder="Qui demande l'échange ?" /></SelectTrigger>
+                <SelectContent>
+                  {ALL_STAFF.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.role === 'medecin' ? '🩺' : '💉'} {s.nom}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Garde du demandeur *</label>
+              <Select value={exchRequesterDutyId} onValueChange={setExchRequesterDutyId}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner la garde" /></SelectTrigger>
+                <SelectContent>
+                  {duties.filter(d => d.staffId === exchRequesterId && d.statut === 'planifie').map(d => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.date} • {d.heureDebut}–{d.heureFin} • {d.type.replace('_', ' ')} • {d.service}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Échanger avec *</label>
+              <Select value={exchTargetId} onValueChange={(v) => { setExchTargetId(v); setExchTargetDutyId(''); }}>
+                <SelectTrigger><SelectValue placeholder="Avec qui échanger ?" /></SelectTrigger>
+                <SelectContent>
+                  {ALL_STAFF.filter(s => s.id !== exchRequesterId).map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.role === 'medecin' ? '🩺' : '💉'} {s.nom}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Garde de l'autre personne *</label>
+              <Select value={exchTargetDutyId} onValueChange={setExchTargetDutyId}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner la garde" /></SelectTrigger>
+                <SelectContent>
+                  {duties.filter(d => d.staffId === exchTargetId && d.statut === 'planifie').map(d => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.date} • {d.heureDebut}–{d.heureFin} • {d.type.replace('_', ' ')} • {d.service}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Motif *</label>
+              <Textarea value={exchMotif} onChange={e => setExchMotif(e.target.value)} placeholder="Pourquoi cet échange ?" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExchangeDialog(false)}>Annuler</Button>
+            <Button onClick={() => {
+              if (!exchRequesterId || !exchRequesterDutyId || !exchTargetId || !exchTargetDutyId || !exchMotif) {
+                toast.error('Veuillez remplir tous les champs');
+                return;
+              }
+              requestDutyExchange({
+                requesterId: exchRequesterId,
+                requesterDutyId: exchRequesterDutyId,
+                targetId: exchTargetId,
+                targetDutyId: exchTargetDutyId,
+                motif: exchMotif,
+              });
+              setShowExchangeDialog(false);
+              toast.success('Demande d\'échange envoyée');
+              setExchRequesterId(''); setExchRequesterDutyId(''); setExchTargetId(''); setExchTargetDutyId(''); setExchMotif('');
+            }} className="gap-1">
+              <Repeat className="w-4 h-4" /> Envoyer la demande
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
