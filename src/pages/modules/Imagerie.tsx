@@ -439,6 +439,9 @@ const Imagerie = () => {
           <TabsTrigger value="file_attente" className="gap-1.5 text-xs">
             <Layers className="w-3.5 h-3.5" />Demandes ({stats.enAttente})
           </TabsTrigger>
+          <TabsTrigger value="priority_queue" className="gap-1.5 text-xs">
+            <ListOrdered className="w-3.5 h-3.5" />File Prioritaire
+          </TabsTrigger>
           <TabsTrigger value="resultats" className="gap-1.5 text-xs">
             <FileImage className="w-3.5 h-3.5" />Résultats ({stats.termines})
           </TabsTrigger>
