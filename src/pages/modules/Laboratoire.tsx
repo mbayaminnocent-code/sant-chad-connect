@@ -516,7 +516,38 @@ const Laboratoire = () => {
           />
         </TabsContent>
 
-        <TabsContent value="completed" className="space-y-3">
+        {/* Alertes */}
+        <TabsContent value="alertes">
+          <WaitTimeAlerts
+            items={worklistExams.map(e => ({
+              id: e.id, patientId: e.patientId, patientName: e.patientName, nhid: e.nhid,
+              urgence: patients.find(p => p.id === e.patientId)?.urgence || 4,
+              examName: e.examName,
+              status: e.status === 'pending' ? 'waiting' as const : (e.status === 'in_progress' || e.status === 'results_entry') ? 'in_progress' as const : 'done' as const,
+              arrivalTime: e.createdAt,
+              estimatedDuration: EXAM_DURATIONS[e.examCatalogId] || 20,
+            }))}
+            serviceName="Laboratoire"
+          />
+        </TabsContent>
+
+        {/* Dashboard */}
+        <TabsContent value="dashboard">
+          <ServiceDashboard
+            items={worklistExams.map(e => ({
+              id: e.id, patientId: e.patientId, patientName: e.patientName, nhid: e.nhid,
+              urgence: patients.find(p => p.id === e.patientId)?.urgence || 4,
+              examName: e.examName,
+              status: e.status === 'pending' ? 'waiting' as const : (e.status === 'in_progress' || e.status === 'results_entry') ? 'in_progress' as const : 'done' as const,
+              arrivalTime: e.createdAt,
+              estimatedDuration: EXAM_DURATIONS[e.examCatalogId] || 20,
+            }))}
+            serviceName="Laboratoire"
+            maxParallel={3}
+            inProgressCount={pendingExams.filter(e => e.status === 'in_progress' || e.status === 'results_entry').length}
+          />
+        </TabsContent>
+
           {completedExams.length === 0 ? (
             <Card><CardContent className="p-8 text-center text-muted-foreground">Aucun résultat envoyé au DPI pour le moment.</CardContent></Card>
           ) : completedExams.map(exam => (
