@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePatientJourney } from '@/contexts/PatientJourneyContext';
-import { Calendar, Clock, Users, UserPlus, ArrowRightLeft, Plus, Stethoscope, Scissors, CalendarDays, Send, Coffee, Moon, Shield, Heart, Trash2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Calendar, Clock, Users, UserPlus, ArrowRightLeft, Plus, Stethoscope, Scissors, CalendarDays, Send, Coffee, Moon, Shield, Heart, Trash2, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ─── Types ───
@@ -100,6 +101,13 @@ const DOCTORS: Doctor[] = [
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
+const SERVICES_MAP: Record<string, string> = {
+  general: 'Médecine Générale', cardio: 'Cardiologie', chirurgie: 'Chirurgie', gyneco: 'Gynécologie',
+  pediatrie: 'Pédiatrie', neuro: 'Neurologie', ortho: 'Orthopédie', pneumo: 'Pneumologie',
+  onco: 'Oncologie', reanimation: 'Réanimation', interne: 'Médecine Interne',
+  ophtalmo: 'Ophtalmologie', uro: 'Urologie', dermato: 'Dermatologie', maternite: 'Maternité',
+};
+
 // ─── Nurses ───
 const NURSES: StaffMember[] = [
   { id: 'inf1', nom: 'Fatima Ali', role: 'infirmier', service: 'general' },
@@ -164,13 +172,21 @@ const INITIAL_DUTIES: DutyRecord[] = [
 
 const Planning = () => {
   const { patients } = usePatientJourney();
+  const { role, doctorProfile } = useAuth();
+
+  // Determine editing permissions
+  const isDoctor = role === 'doctor';
+  const isChefDeService = doctorProfile?.isChefDeService || false;
+  const canEditPlanning = !isDoctor || isChefDeService; // non-doctors (director, nurse) or chef de service can edit
+  const myDoctorId = doctorProfile?.doctorId || '';
+  const myService = doctorProfile?.service || '';
 
   const [schedules, setSchedules] = useState<ScheduleSlot[]>(INITIAL_SCHEDULES);
   const [appointments, setAppointments] = useState<Appointment[]>(INITIAL_APPOINTMENTS);
   const [referrals, setReferrals] = useState<Referral[]>(INITIAL_REFERRALS);
   const [breaks, setBreaks] = useState<BreakRecord[]>(INITIAL_BREAKS);
   const [duties, setDuties] = useState<DutyRecord[]>(INITIAL_DUTIES);
-  const [selectedDoctor, setSelectedDoctor] = useState<string>('all');
+  const [selectedDoctor, setSelectedDoctor] = useState<string>(isDoctor && !isChefDeService ? myDoctorId : 'all');
   const [search, setSearch] = useState('');
 
   // Dialogs
@@ -401,13 +417,23 @@ const Planning = () => {
 
   const filteredAppointments = useMemo(() => {
     let result = appointments;
-    if (selectedDoctor !== 'all') result = result.filter(a => a.doctorId === selectedDoctor);
+    // Regular doctors only see their own appointments
+    if (isDoctor && !isChefDeService) {
+      result = result.filter(a => a.doctorId === myDoctorId);
+    } else if (isDoctor && isChefDeService) {
+      // Chef de service sees their service's doctors
+      const serviceDoctorIds = DOCTORS.filter(d => d.service === myService).map(d => d.id);
+      if (selectedDoctor !== 'all') result = result.filter(a => a.doctorId === selectedDoctor);
+      else result = result.filter(a => serviceDoctorIds.includes(a.doctorId));
+    } else {
+      if (selectedDoctor !== 'all') result = result.filter(a => a.doctorId === selectedDoctor);
+    }
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(a => a.patientName.toLowerCase().includes(q) || a.nhid.toLowerCase().includes(q) || a.motif.toLowerCase().includes(q));
     }
     return result.sort((a, b) => `${a.date}${a.heure}`.localeCompare(`${b.date}${b.heure}`));
-  }, [appointments, selectedDoctor, search]);
+  }, [appointments, selectedDoctor, search, isDoctor, isChefDeService, myDoctorId, myService]);
 
   const doctorPatients = useMemo(() => {
     const map: Record<string, { patientId: string; patientName: string; nhid: string }[]> = {};
@@ -470,21 +496,31 @@ const Planning = () => {
           </h1>
           <p className="text-muted-foreground text-sm">Gestion des rendez-vous, programmation des médecins et transferts de patients</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button size="sm" className="gap-1" onClick={() => setShowNewApptDialog(true)}>
-            <Plus className="w-4 h-4" /> Rendez-vous
-          </Button>
-          <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowNewScheduleDialog(true)}>
-            <Clock className="w-4 h-4" /> Créneau
-          </Button>
+        <div className="flex gap-2 flex-wrap items-center">
+          {isDoctor && !isChefDeService && (
+            <Badge variant="outline" className="gap-1 text-xs"><Lock className="w-3 h-3" /> Lecture seule</Badge>
+          )}
+          {isDoctor && isChefDeService && (
+            <Badge className="bg-primary/10 text-primary text-xs gap-1">👑 Chef de Service – {SERVICES_MAP[myService] || myService}</Badge>
+          )}
+          {canEditPlanning && (
+            <>
+              <Button size="sm" className="gap-1" onClick={() => setShowNewApptDialog(true)}>
+                <Plus className="w-4 h-4" /> Rendez-vous
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowNewScheduleDialog(true)}>
+                <Clock className="w-4 h-4" /> Créneau
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowBreakDialog(true)}>
+                <Coffee className="w-4 h-4" /> Pause
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowDutyDialog(true)}>
+                <Moon className="w-4 h-4" /> Garde
+              </Button>
+            </>
+          )}
           <Button size="sm" variant="secondary" className="gap-1" onClick={() => setShowReferralDialog(true)}>
             <ArrowRightLeft className="w-4 h-4" /> Transférer
-          </Button>
-          <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowBreakDialog(true)}>
-            <Coffee className="w-4 h-4" /> Pause
-          </Button>
-          <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowDutyDialog(true)}>
-            <Moon className="w-4 h-4" /> Garde
           </Button>
         </div>
       </div>

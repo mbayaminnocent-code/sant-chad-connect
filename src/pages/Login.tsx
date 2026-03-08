@@ -73,15 +73,22 @@ const Login = () => {
             <div className="mt-6 p-3 rounded-lg bg-muted">
               <p className="text-xs font-medium text-muted-foreground mb-2">Comptes de démonstration :</p>
               <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                <span>admin / admin</span><span className="text-primary">→ Médecin</span>
+                <span className="font-semibold col-span-2 text-foreground mt-1">— Médecins —</span>
+                <span>admin / admin</span><span className="text-primary">→ Dr. Moussa (Méd. Gén.) 👑</span>
+                <span>drHawa / drHawa</span><span className="text-primary">→ Dr. Hawa (Gynéco) 👑</span>
+                <span>drAli / drAli</span><span className="text-primary">→ Dr. Ali (Cardio) 👑</span>
+                <span>drMoussa / drMoussa</span><span className="text-primary">→ Dr. Fadil (Chirurgie)</span>
+                <span>drFadoul / drFadoul</span><span className="text-primary">→ Dr. Fadoul (Pédiatrie) 👑</span>
+                <span className="font-semibold col-span-2 text-foreground mt-1">— Autres rôles —</span>
                 <span>infirmier / infirmier</span><span className="text-primary">→ Infirmier</span>
-                <span>reception / reception</span><span className="text-primary">→ Réception</span>
+                <span>reception / reception</span><span className="text-primary">→ Réception / Caisse</span>
                 <span>labo / labo</span><span className="text-primary">→ Laboratoire</span>
                 <span>imagerie / imagerie</span><span className="text-primary">→ Imagerie</span>
                 <span>pharmacie / pharmacie</span><span className="text-primary">→ Pharmacie</span>
                 <span>directeur / directeur</span><span className="text-primary">→ Directeur</span>
                 <span>ministre / ministre</span><span className="text-primary">→ Ministre</span>
               </div>
+              <p className="text-[10px] text-muted-foreground mt-2">👑 = Chef de service (peut modifier le planning)</p>
             </div>
           </CardContent>
         </Card>

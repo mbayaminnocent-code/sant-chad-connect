@@ -24,6 +24,7 @@ export const translations = {
     'nav.dashboard_national': 'Dashboard National',
     'nav.surveillance': 'Surveillance Épidémique',
     'nav.statistiques': 'Statistiques SNIS',
+    'nav.espace_medecin': 'Mon Espace',
 
     // TopBar
     'topbar.offline': 'MODE HORS-LIGNE',
@@ -219,6 +220,7 @@ export const translations = {
     'nav.dashboard_national': 'لوحة القيادة الوطنية',
     'nav.surveillance': 'المراقبة الوبائية',
     'nav.statistiques': 'إحصائيات SNIS',
+    'nav.espace_medecin': 'مساحتي',
 
     // TopBar
     'topbar.offline': 'وضع عدم الاتصال',

@@ -24,6 +24,7 @@ import Services from "@/pages/modules/Services";
 import IAMarate from "@/pages/modules/IAMarate";
 import PatientsList from "@/pages/modules/PatientsList";
 import MinistryDashboard from "@/pages/modules/MinistryDashboard";
+import EspaceMedecin from "@/pages/modules/EspaceMedecin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,21 +39,31 @@ const AppLayout = () => {
           <TopBar />
           <main className="flex-1 overflow-auto">
             <Routes>
-              <Route path="/" element={<Navigate to={role === 'minister' ? '/ministere' : '/accueil'} replace />} />
-              <Route path="/accueil" element={<Accueil />} />
-              <Route path="/triage" element={<Triage />} />
+              <Route path="/" element={
+                <Navigate to={
+                  role === 'minister' ? '/ministere' :
+                  role === 'doctor' ? '/espace-medecin' :
+                  '/accueil'
+                } replace />
+              } />
+              {/* Doctor-restricted routes */}
+              <Route path="/espace-medecin" element={role === 'doctor' ? <EspaceMedecin /> : <AccessDenied />} />
               <Route path="/dpi" element={role === 'doctor' ? <DPI /> : <AccessDenied />} />
-              <Route path="/laboratoire" element={<Laboratoire />} />
-              <Route path="/imagerie" element={<Imagerie />} />
-              <Route path="/pharmacie" element={<Pharmacie />} />
-              <Route path="/facturation" element={<Facturation />} />
-              <Route path="/hospitalisations" element={<Hospitalisations />} />
-              <Route path="/bloc-operatoire" element={<BlocOperatoire />} />
+              <Route path="/bloc-operatoire" element={['doctor', 'director'].includes(role) ? <BlocOperatoire /> : <AccessDenied />} />
               <Route path="/planning" element={<Planning />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/ia" element={<IAMarate />} />
               <Route path="/patients" element={<PatientsList />} />
-              <Route path="/dashboard-directeur" element={<MinistryDashboard />} />
+              <Route path="/ia" element={<IAMarate />} />
+              
+              {/* Non-doctor routes (doctors cannot access) */}
+              <Route path="/accueil" element={role !== 'doctor' ? <Accueil /> : <Navigate to="/espace-medecin" replace />} />
+              <Route path="/triage" element={role !== 'doctor' ? <Triage /> : <AccessDenied msg="Le triage est géré par les infirmiers." />} />
+              <Route path="/laboratoire" element={role !== 'doctor' ? <Laboratoire /> : <AccessDenied msg="Le laboratoire est géré par les techniciens de labo." />} />
+              <Route path="/imagerie" element={role !== 'doctor' ? <Imagerie /> : <AccessDenied msg="L'imagerie est gérée par les techniciens d'imagerie." />} />
+              <Route path="/pharmacie" element={role !== 'doctor' ? <Pharmacie /> : <AccessDenied msg="La pharmacie est gérée par les pharmaciens." />} />
+              <Route path="/facturation" element={['reception', 'director'].includes(role) ? <Facturation /> : <AccessDenied />} />
+              <Route path="/hospitalisations" element={role !== 'doctor' ? <Hospitalisations /> : <AccessDenied />} />
+              <Route path="/services" element={role !== 'doctor' ? <Services /> : <AccessDenied />} />
+              <Route path="/dashboard-directeur" element={role === 'director' ? <MinistryDashboard /> : <AccessDenied />} />
               <Route path="/ministere" element={<MinistryDashboard />} />
               <Route path="/ministere/*" element={<MinistryDashboard />} />
               <Route path="*" element={<NotFound />} />
@@ -64,12 +75,12 @@ const AppLayout = () => {
   );
 };
 
-const AccessDenied = () => (
+const AccessDenied = ({ msg }: { msg?: string }) => (
   <div className="flex items-center justify-center h-full p-12">
     <div className="text-center space-y-2">
       <p className="text-4xl">🔒</p>
-      <h2 className="text-xl font-bold text-foreground">Accès Restreint aux Médecins</h2>
-      <p className="text-sm text-muted-foreground">Le Dossier Patient Informatisé est accessible uniquement avec une authentification médicale.</p>
+      <h2 className="text-xl font-bold text-foreground">Accès Restreint</h2>
+      <p className="text-sm text-muted-foreground">{msg || "Vous n'avez pas les droits pour accéder à ce module."}</p>
     </div>
   </div>
 );

@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/sidebar';
 import {
   Home, Users, FileText, FlaskConical, ScanLine, Pill, Banknote, BedDouble,
-  Scissors, Brain, Stethoscope, Activity, BarChart3, Shield, HeartPulse, CalendarDays
+  Scissors, Brain, Stethoscope, Activity, BarChart3, Shield, HeartPulse, CalendarDays, UserCircle
 } from 'lucide-react';
 import type { Role } from '@/data/mockData';
 import type { TranslationKey } from '@/i18n/translations';
@@ -20,21 +20,31 @@ interface NavItem {
   roles: Role[];
 }
 
+// Items for NON-doctor roles (doctors have their own restricted set)
 const NAV_ITEMS: NavItem[] = [
-  { titleKey: 'nav.accueil', url: '/accueil', icon: Home, roles: ['kiosk', 'reception', 'nurse', 'doctor', 'director'] },
-  { titleKey: 'nav.triage', url: '/triage', icon: HeartPulse, roles: ['nurse', 'doctor', 'director'] },
-  { titleKey: 'nav.dpi', url: '/dpi', icon: FileText, roles: ['doctor'] },
-  { titleKey: 'nav.laboratoire', url: '/laboratoire', icon: FlaskConical, roles: ['lab', 'doctor', 'director'] },
-  { titleKey: 'nav.imagerie', url: '/imagerie', icon: ScanLine, roles: ['imaging', 'doctor', 'director'] },
-  { titleKey: 'nav.pharmacie', url: '/pharmacie', icon: Pill, roles: ['pharmacist', 'doctor', 'director'] },
+  { titleKey: 'nav.accueil', url: '/accueil', icon: Home, roles: ['kiosk', 'reception', 'nurse', 'director'] },
+  { titleKey: 'nav.triage', url: '/triage', icon: HeartPulse, roles: ['nurse', 'director'] },
+  { titleKey: 'nav.laboratoire', url: '/laboratoire', icon: FlaskConical, roles: ['lab', 'director'] },
+  { titleKey: 'nav.imagerie', url: '/imagerie', icon: ScanLine, roles: ['imaging', 'director'] },
+  { titleKey: 'nav.pharmacie', url: '/pharmacie', icon: Pill, roles: ['pharmacist', 'director'] },
   { titleKey: 'nav.facturation', url: '/facturation', icon: Banknote, roles: ['reception', 'director'] },
-  { titleKey: 'nav.hospitalisations', url: '/hospitalisations', icon: BedDouble, roles: ['nurse', 'doctor', 'director'] },
-  { titleKey: 'nav.bloc', url: '/bloc-operatoire', icon: Scissors, roles: ['doctor', 'director'] },
-  { titleKey: 'nav.planning', url: '/planning', icon: CalendarDays, roles: ['doctor', 'nurse', 'reception', 'director'] },
-  { titleKey: 'nav.services', url: '/services', icon: Stethoscope, roles: ['doctor', 'nurse', 'director'] },
-  { titleKey: 'nav.ia', url: '/ia', icon: Brain, roles: ['doctor', 'director', 'nurse', 'lab'] },
+  { titleKey: 'nav.hospitalisations', url: '/hospitalisations', icon: BedDouble, roles: ['nurse', 'director'] },
+  { titleKey: 'nav.bloc', url: '/bloc-operatoire', icon: Scissors, roles: ['director'] },
+  { titleKey: 'nav.planning', url: '/planning', icon: CalendarDays, roles: ['nurse', 'reception', 'director'] },
+  { titleKey: 'nav.services', url: '/services', icon: Stethoscope, roles: ['nurse', 'director'] },
+  { titleKey: 'nav.ia', url: '/ia', icon: Brain, roles: ['director', 'nurse', 'lab'] },
   { titleKey: 'nav.dashboard', url: '/dashboard-directeur', icon: BarChart3, roles: ['director'] },
-  { titleKey: 'nav.patients', url: '/patients', icon: Users, roles: ['reception', 'nurse', 'doctor', 'lab', 'imaging', 'pharmacist', 'director'] },
+  { titleKey: 'nav.patients', url: '/patients', icon: Users, roles: ['reception', 'nurse', 'lab', 'imaging', 'pharmacist', 'director'] },
+];
+
+// Doctor-specific navigation (restricted)
+const DOCTOR_NAV_ITEMS: NavItem[] = [
+  { titleKey: 'nav.espace_medecin' as TranslationKey, url: '/espace-medecin', icon: UserCircle, roles: ['doctor'] },
+  { titleKey: 'nav.patients', url: '/patients', icon: Users, roles: ['doctor'] },
+  { titleKey: 'nav.dpi', url: '/dpi', icon: FileText, roles: ['doctor'] },
+  { titleKey: 'nav.bloc', url: '/bloc-operatoire', icon: Scissors, roles: ['doctor'] },
+  { titleKey: 'nav.planning', url: '/planning', icon: CalendarDays, roles: ['doctor'] },
+  { titleKey: 'nav.ia', url: '/ia', icon: Brain, roles: ['doctor'] },
 ];
 
 const MINISTER_ITEMS: NavItem[] = [
@@ -44,13 +54,20 @@ const MINISTER_ITEMS: NavItem[] = [
 ];
 
 export function AppSidebar() {
-  const { role } = useAuth();
+  const { role, doctorProfile } = useAuth();
   const { state } = useSidebar();
   const { t } = useTranslation();
   const collapsed = state === 'collapsed';
   const location = useLocation();
 
-  const items = role === 'minister' ? MINISTER_ITEMS : NAV_ITEMS.filter(item => item.roles.includes(role));
+  let items: NavItem[];
+  if (role === 'minister') {
+    items = MINISTER_ITEMS;
+  } else if (role === 'doctor') {
+    items = DOCTOR_NAV_ITEMS;
+  } else {
+    items = NAV_ITEMS.filter(item => item.roles.includes(role));
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -75,7 +92,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/50">
-            {role === 'minister' ? t('sidebar.ministry') : t('sidebar.modules')}
+            {role === 'minister' ? t('sidebar.ministry') : role === 'doctor' ? (doctorProfile?.specialite || 'Médecin') : t('sidebar.modules')}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -84,7 +101,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      end={item.url === '/accueil'}
+                      end={item.url === '/accueil' || item.url === '/espace-medecin'}
                       className="hover:bg-sidebar-accent/50"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
