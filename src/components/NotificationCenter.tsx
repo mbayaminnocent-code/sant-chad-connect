@@ -11,6 +11,7 @@ const typeConfig: Record<MedicalNotification['type'], { icon: typeof Bell; label
   transfert: { icon: ArrowRightLeft, label: 'Transfert', color: 'text-primary' },
   rdv: { icon: Calendar, label: 'Rendez-vous', color: 'text-secondary' },
   garde: { icon: Shield, label: 'Garde', color: 'text-destructive' },
+  echange: { icon: Repeat, label: 'Échange', color: 'text-accent-foreground' },
   info: { icon: Info, label: 'Info', color: 'text-muted-foreground' },
 };
 
