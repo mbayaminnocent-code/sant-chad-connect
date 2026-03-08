@@ -434,16 +434,16 @@ const Pharmacie = () => {
                           </div>
                         </div>
                         <div className="flex flex-col gap-1.5">
-                          {!disp.paye ? (
-                            <div className="flex flex-col gap-1">
+                          {!isPatientPharmaPaid(disp.patientId) ? (
+                            <div className="flex flex-col gap-1 items-end">
                               <Badge variant="outline" className="text-[9px] justify-center font-mono">{disp.totalPrix.toLocaleString()} FCFA</Badge>
-                              <Button size="sm" className="h-8 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleConfirmPharmacyPayment(disp.id)}>
-                                <Banknote className="w-3 h-3" /> Confirmer paiement
-                              </Button>
+                              <p className="text-[9px] text-destructive text-right">⚠ Reçu caisse requis</p>
                             </div>
                           ) : (
                             <div className="flex flex-col gap-1">
-                              <Badge variant="outline" className="text-[9px] justify-center border-green-500 text-green-600"><ShieldCheck className="w-3 h-3 mr-0.5" />Payé ✓</Badge>
+                              <Badge variant="outline" className="text-[9px] justify-center border-green-500/50 text-green-600">
+                                <ShieldCheck className="w-3 h-3 mr-0.5" />Reçu: {getPatientPharmaReceipt(disp.patientId)?.id?.substring(0, 12)}...
+                              </Badge>
                               <Button size="sm" className="h-8 text-xs gap-1" onClick={() => handleOpenDispense(disp)}>
                                 <ShoppingCart className="w-3 h-3" /> Dispenser
                               </Button>
