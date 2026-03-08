@@ -12,8 +12,9 @@ import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import {
   ScanLine, Camera, FileImage, Send, Clock, CheckCircle, Search, Eye, Monitor,
   Printer, Play, AlertTriangle, User, Zap, ArrowRight, Activity, ImageIcon,
-  FileText, Layers, Settings, ChevronRight, Plus
+  FileText, Layers, Settings, ChevronRight, Plus, ListOrdered
 } from 'lucide-react';
+import PriorityQueue, { QueueItem } from '@/components/PriorityQueue';
 import { toast } from 'sonner';
 
 const IMAGING_TYPES = [
