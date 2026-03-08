@@ -5,12 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Bell, ArrowRightLeft, Calendar, Shield, Info, CheckCheck } from 'lucide-react';
+import { Bell, ArrowRightLeft, Calendar, Shield, Info, CheckCheck, Repeat } from 'lucide-react';
 
 const typeConfig: Record<MedicalNotification['type'], { icon: typeof Bell; label: string; color: string }> = {
   transfert: { icon: ArrowRightLeft, label: 'Transfert', color: 'text-primary' },
   rdv: { icon: Calendar, label: 'Rendez-vous', color: 'text-secondary' },
   garde: { icon: Shield, label: 'Garde', color: 'text-destructive' },
+  echange: { icon: Repeat, label: 'Échange', color: 'text-accent-foreground' },
   info: { icon: Info, label: 'Info', color: 'text-muted-foreground' },
 };
 

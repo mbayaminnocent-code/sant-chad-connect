@@ -11,8 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { usePatientJourney } from '@/contexts/PatientJourneyContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePlanning, DOCTORS, JOURS, SERVICES_MAP, ALL_STAFF, type Appointment, type BreakRecord, type DutyRecord, type ScheduleSlot } from '@/contexts/PlanningContext';
-import { Calendar, Clock, Users, UserPlus, ArrowRightLeft, Plus, Stethoscope, Scissors, CalendarDays, Send, Coffee, Moon, Shield, Heart, Trash2, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { usePlanning, DOCTORS, JOURS, SERVICES_MAP, ALL_STAFF, type Appointment, type BreakRecord, type DutyRecord, type ScheduleSlot, type DutyExchange } from '@/contexts/PlanningContext';
+import { Calendar, Clock, Users, UserPlus, ArrowRightLeft, Plus, Stethoscope, Scissors, CalendarDays, Send, Coffee, Moon, Shield, Heart, Trash2, Lock, ChevronLeft, ChevronRight, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, addMonths, subMonths, getDay, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -26,6 +26,7 @@ const Planning = () => {
     referrals, setReferrals,
     breaks, setBreaks,
     duties, setDuties,
+    dutyExchanges, requestDutyExchange, respondToExchange, validateExchange,
     addMedicalNotification,
   } = usePlanning();
 
@@ -44,6 +45,14 @@ const Planning = () => {
   const [showReferralDialog, setShowReferralDialog] = useState(false);
   const [showBreakDialog, setShowBreakDialog] = useState(false);
   const [showDutyDialog, setShowDutyDialog] = useState(false);
+  const [showExchangeDialog, setShowExchangeDialog] = useState(false);
+
+  // Exchange form
+  const [exchRequesterId, setExchRequesterId] = useState('');
+  const [exchRequesterDutyId, setExchRequesterDutyId] = useState('');
+  const [exchTargetId, setExchTargetId] = useState('');
+  const [exchTargetDutyId, setExchTargetDutyId] = useState('');
+  const [exchMotif, setExchMotif] = useState('');
 
   // Calendar state
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 2, 1)); // March 2026
@@ -424,6 +433,9 @@ const Planning = () => {
           <Button size="sm" variant="secondary" className="gap-1" onClick={() => setShowReferralDialog(true)}>
             <ArrowRightLeft className="w-4 h-4" /> Transférer
           </Button>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowExchangeDialog(true)}>
+            <Repeat className="w-4 h-4" /> Échanger garde
+          </Button>
         </div>
       </div>
 
@@ -455,6 +467,7 @@ const Planning = () => {
           <TabsTrigger value="calendrier">📆 Calendrier</TabsTrigger>
           <TabsTrigger value="pauses">☕ Pauses ({breaks.length})</TabsTrigger>
           <TabsTrigger value="gardes">🛡️ Gardes ({duties.length})</TabsTrigger>
+          <TabsTrigger value="echanges">🔄 Échanges ({dutyExchanges.filter(e => e.statut !== 'valide' && e.statut !== 'refuse').length})</TabsTrigger>
           <TabsTrigger value="patients">👥 Patients</TabsTrigger>
           <TabsTrigger value="transferts">🔄 Transferts ({pendingReferrals.length})</TabsTrigger>
         </TabsList>
@@ -859,6 +872,103 @@ const Planning = () => {
           )}
         </TabsContent>
 
+        {/* ─── Échanges de gardes Tab ─── */}
+        <TabsContent value="echanges" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Demandes d'échange de gardes entre personnel – Validation par le chef de service</p>
+            <Button size="sm" className="gap-1" onClick={() => setShowExchangeDialog(true)}>
+              <Plus className="w-4 h-4" /> Demander un échange
+            </Button>
+          </div>
+
+          {dutyExchanges.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-muted-foreground">Aucune demande d'échange</CardContent></Card>
+          ) : dutyExchanges.map(exch => {
+            const requester = ALL_STAFF.find(s => s.id === exch.requesterId);
+            const target = ALL_STAFF.find(s => s.id === exch.targetId);
+            const requesterDuty = duties.find(d => d.id === exch.requesterDutyId);
+            const targetDuty = duties.find(d => d.id === exch.targetDutyId);
+
+            const statusConfig: Record<string, { label: string; style: string }> = {
+              en_attente_cible: { label: '⏳ En attente de réponse', style: 'bg-primary/10 text-primary' },
+              accepte_cible: { label: '👤 Accepté par le collègue', style: 'bg-accent text-accent-foreground' },
+              en_attente_chef: { label: '👑 En attente du chef', style: 'bg-warning/10 text-warning' },
+              valide: { label: '✅ Validé', style: 'bg-secondary/10 text-secondary' },
+              refuse: { label: '❌ Refusé', style: 'bg-destructive/10 text-destructive' },
+            };
+            const status = statusConfig[exch.statut];
+
+            // Can the current user act on this?
+            const canRespondAsTarget = exch.statut === 'en_attente_cible' && exch.targetId === myDoctorId;
+            const canValidateAsChef = exch.statut === 'en_attente_chef' && isChefDeService;
+
+            return (
+              <Card key={exch.id} className={`border-l-4 ${
+                exch.statut === 'valide' ? 'border-l-secondary' :
+                exch.statut === 'refuse' ? 'border-l-destructive' :
+                exch.statut === 'en_attente_chef' ? 'border-l-warning' :
+                'border-l-primary'
+              }`}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <Repeat className="w-4 h-4 text-primary" />
+                        Échange de garde
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="p-2 rounded bg-primary/5 border border-primary/10 space-y-1">
+                          <p className="text-xs font-semibold text-foreground">{requester?.nom}</p>
+                          {requesterDuty ? (
+                            <>
+                              <p className="text-[11px] text-muted-foreground">📅 {requesterDuty.date} • {requesterDuty.heureDebut}–{requesterDuty.heureFin}</p>
+                              <p className="text-[11px] text-muted-foreground">🏥 {requesterDuty.service} • {requesterDuty.type.replace('_', ' ')}</p>
+                            </>
+                          ) : <p className="text-[11px] text-muted-foreground">Garde supprimée</p>}
+                        </div>
+                        <div className="p-2 rounded bg-accent/30 border border-accent/20 space-y-1">
+                          <p className="text-xs font-semibold text-foreground">{target?.nom}</p>
+                          {targetDuty ? (
+                            <>
+                              <p className="text-[11px] text-muted-foreground">📅 {targetDuty.date} • {targetDuty.heureDebut}–{targetDuty.heureFin}</p>
+                              <p className="text-[11px] text-muted-foreground">🏥 {targetDuty.service} • {targetDuty.type.replace('_', ' ')}</p>
+                            </>
+                          ) : <p className="text-[11px] text-muted-foreground">Garde supprimée</p>}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">💬 Motif: {exch.motif}</p>
+                      <p className="text-[10px] text-muted-foreground">📅 Demandé le {exch.date}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge className={`text-[10px] ${status.style}`}>{status.label}</Badge>
+                      {canRespondAsTarget && (
+                        <div className="flex gap-1">
+                          <Button size="sm" className="text-[10px] h-7 gap-1" onClick={() => respondToExchange(exch.id, true)}>
+                            ✅ Accepter
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-[10px] h-7 text-destructive" onClick={() => respondToExchange(exch.id, false)}>
+                            Refuser
+                          </Button>
+                        </div>
+                      )}
+                      {canValidateAsChef && (
+                        <div className="flex gap-1">
+                          <Button size="sm" className="text-[10px] h-7 gap-1 bg-secondary hover:bg-secondary/90" onClick={() => validateExchange(exch.id, true)}>
+                            👑 Valider
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-[10px] h-7 text-destructive" onClick={() => validateExchange(exch.id, false)}>
+                            Rejeter
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </TabsContent>
+
         {/* ─── Transferts Tab ─── */}
         <TabsContent value="transferts" className="space-y-4">
           {referrals.length === 0 ? (
@@ -1185,6 +1295,92 @@ const Planning = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDutyDialog(false)}>Annuler</Button>
             <Button onClick={handleCreateDuty}>Ajouter la garde</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Exchange Dialog ─── */}
+      <Dialog open={showExchangeDialog} onOpenChange={setShowExchangeDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Demander un échange de garde</DialogTitle></DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Demandeur *</label>
+              <Select value={exchRequesterId} onValueChange={(v) => { setExchRequesterId(v); setExchRequesterDutyId(''); }}>
+                <SelectTrigger><SelectValue placeholder="Qui demande l'échange ?" /></SelectTrigger>
+                <SelectContent>
+                  {ALL_STAFF.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.role === 'medecin' ? '🩺' : '💉'} {s.nom}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Garde du demandeur *</label>
+              <Select value={exchRequesterDutyId} onValueChange={setExchRequesterDutyId}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner la garde" /></SelectTrigger>
+                <SelectContent>
+                  {duties.filter(d => d.staffId === exchRequesterId && d.statut === 'planifie').map(d => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.date} • {d.heureDebut}–{d.heureFin} • {d.type.replace('_', ' ')} • {d.service}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Échanger avec *</label>
+              <Select value={exchTargetId} onValueChange={(v) => { setExchTargetId(v); setExchTargetDutyId(''); }}>
+                <SelectTrigger><SelectValue placeholder="Avec qui échanger ?" /></SelectTrigger>
+                <SelectContent>
+                  {ALL_STAFF.filter(s => s.id !== exchRequesterId).map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.role === 'medecin' ? '🩺' : '💉'} {s.nom}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Garde de l'autre personne *</label>
+              <Select value={exchTargetDutyId} onValueChange={setExchTargetDutyId}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner la garde" /></SelectTrigger>
+                <SelectContent>
+                  {duties.filter(d => d.staffId === exchTargetId && d.statut === 'planifie').map(d => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.date} • {d.heureDebut}–{d.heureFin} • {d.type.replace('_', ' ')} • {d.service}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Motif *</label>
+              <Textarea value={exchMotif} onChange={e => setExchMotif(e.target.value)} placeholder="Pourquoi cet échange ?" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExchangeDialog(false)}>Annuler</Button>
+            <Button onClick={() => {
+              if (!exchRequesterId || !exchRequesterDutyId || !exchTargetId || !exchTargetDutyId || !exchMotif) {
+                toast.error('Veuillez remplir tous les champs');
+                return;
+              }
+              requestDutyExchange({
+                requesterId: exchRequesterId,
+                requesterDutyId: exchRequesterDutyId,
+                targetId: exchTargetId,
+                targetDutyId: exchTargetDutyId,
+                motif: exchMotif,
+              });
+              setShowExchangeDialog(false);
+              toast.success('Demande d\'échange envoyée');
+              setExchRequesterId(''); setExchRequesterDutyId(''); setExchTargetId(''); setExchTargetDutyId(''); setExchMotif('');
+            }} className="gap-1">
+              <Repeat className="w-4 h-4" /> Envoyer la demande
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
