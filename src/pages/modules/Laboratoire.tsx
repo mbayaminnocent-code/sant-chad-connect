@@ -426,6 +426,12 @@ const Laboratoire = () => {
           <TabsTrigger value="priority_queue" className="gap-1.5">
             <ListOrdered className="w-3.5 h-3.5" />File Prioritaire
           </TabsTrigger>
+          <TabsTrigger value="alertes" className="gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" />Alertes
+          </TabsTrigger>
+          <TabsTrigger value="dashboard" className="gap-1.5">
+            📊 Dashboard
+          </TabsTrigger>
           <TabsTrigger value="completed">✅ Terminés ({completedExams.length})</TabsTrigger>
           <TabsTrigger value="automates">⚙️ Automates</TabsTrigger>
         </TabsList>
