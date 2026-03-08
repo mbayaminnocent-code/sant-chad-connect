@@ -425,6 +425,9 @@ const Planning = () => {
           <Button size="sm" variant="secondary" className="gap-1" onClick={() => setShowReferralDialog(true)}>
             <ArrowRightLeft className="w-4 h-4" /> Transférer
           </Button>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowExchangeDialog(true)}>
+            <Repeat className="w-4 h-4" /> Échanger garde
+          </Button>
         </div>
       </div>
 
