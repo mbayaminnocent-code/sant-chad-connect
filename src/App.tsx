@@ -26,6 +26,7 @@ import Services from "@/pages/modules/Services";
 import IAMarate from "@/pages/modules/IAMarate";
 import PatientsList from "@/pages/modules/PatientsList";
 import MinistryDashboard from "@/pages/modules/MinistryDashboard";
+import DirectorDashboard from "@/pages/modules/DirectorDashboard";
 import EspaceMedecin from "@/pages/modules/EspaceMedecin";
 import NotFound from "./pages/NotFound";
 
