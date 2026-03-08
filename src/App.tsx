@@ -48,6 +48,7 @@ const AppLayout = () => {
               <Route path="/facturation" element={<Facturation />} />
               <Route path="/hospitalisations" element={<Hospitalisations />} />
               <Route path="/bloc-operatoire" element={<BlocOperatoire />} />
+              <Route path="/planning" element={<Planning />} />
               <Route path="/services" element={<Services />} />
               <Route path="/ia" element={<IAMarate />} />
               <Route path="/patients" element={<PatientsList />} />

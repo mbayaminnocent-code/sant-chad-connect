@@ -211,6 +211,7 @@ export const translations = {
     'nav.facturation': 'الفوترة والصندوق',
     'nav.hospitalisations': 'الإقامة في المستشفى',
     'nav.bloc': 'غرفة العمليات',
+    'nav.planning': 'التخطيط الطبي',
     'nav.services': 'الأقسام الطبية',
     'nav.ia': 'الذكاء الاصطناعي',
     'nav.dashboard': 'لوحة القيادة',

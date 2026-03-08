@@ -30,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { titleKey: 'nav.facturation', url: '/facturation', icon: Banknote, roles: ['reception', 'director'] },
   { titleKey: 'nav.hospitalisations', url: '/hospitalisations', icon: BedDouble, roles: ['nurse', 'doctor', 'director'] },
   { titleKey: 'nav.bloc', url: '/bloc-operatoire', icon: Scissors, roles: ['doctor', 'director'] },
+  { titleKey: 'nav.planning', url: '/planning', icon: CalendarDays, roles: ['doctor', 'nurse', 'reception', 'director'] },
   { titleKey: 'nav.services', url: '/services', icon: Stethoscope, roles: ['doctor', 'nurse', 'director'] },
   { titleKey: 'nav.ia', url: '/ia', icon: Brain, roles: ['doctor', 'director', 'nurse', 'lab'] },
   { titleKey: 'nav.dashboard', url: '/dashboard-directeur', icon: BarChart3, roles: ['director'] },
