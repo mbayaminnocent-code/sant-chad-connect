@@ -11,8 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { usePatientJourney } from '@/contexts/PatientJourneyContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePlanning, DOCTORS, JOURS, SERVICES_MAP, ALL_STAFF, type Appointment, type BreakRecord, type DutyRecord, type ScheduleSlot } from '@/contexts/PlanningContext';
-import { Calendar, Clock, Users, UserPlus, ArrowRightLeft, Plus, Stethoscope, Scissors, CalendarDays, Send, Coffee, Moon, Shield, Heart, Trash2, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { usePlanning, DOCTORS, JOURS, SERVICES_MAP, ALL_STAFF, type Appointment, type BreakRecord, type DutyRecord, type ScheduleSlot, type DutyExchange } from '@/contexts/PlanningContext';
+import { Calendar, Clock, Users, UserPlus, ArrowRightLeft, Plus, Stethoscope, Scissors, CalendarDays, Send, Coffee, Moon, Shield, Heart, Trash2, Lock, ChevronLeft, ChevronRight, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, addMonths, subMonths, getDay, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
