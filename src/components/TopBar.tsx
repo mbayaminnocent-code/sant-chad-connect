@@ -13,6 +13,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
+import NotificationCenter from '@/components/NotificationCenter';
 
 const TopBar = () => {
   const { role, name, logout, switchRole } = useAuth();
@@ -70,7 +71,10 @@ const TopBar = () => {
         {isOffline ? <WifiOff className="w-3 h-3" /> : <Wifi className="w-3 h-3" />}
       </Button>
 
-      {/* Notifications */}
+      {/* Medical Notifications (for doctors) */}
+      {role === 'doctor' && <NotificationCenter />}
+
+      {/* System Notifications */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="h-8 relative">
