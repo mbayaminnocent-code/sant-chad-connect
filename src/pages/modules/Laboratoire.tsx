@@ -9,8 +9,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { usePatientJourney } from '@/contexts/PatientJourneyContext';
 import PatientJourneyTracker from '@/components/PatientJourneyTracker';
-import { FlaskConical, CheckCircle, Clock, Search, Send, Play, FileText, AlertTriangle, Plus, Beaker } from 'lucide-react';
+import { FlaskConical, CheckCircle, Clock, Search, Send, Play, FileText, AlertTriangle, Plus, Beaker, Banknote, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+
+const EXAM_PRICES: Record<string, number> = {
+  'nfs': 8000, 'ge': 5000, 'glycemie': 3000, 'creat': 10000,
+  'bilan_hep': 15000, 'troponine': 20000, 'hba1c': 8000,
+  'proteinurie': 6000, 'hemoculture': 12000, 'bk': 10000,
+  'ionogramme': 12000, 'pcr_meningo': 25000,
+};
 
 const EXAM_CATALOG = [
   { id: 'nfs', name: 'NFS Complète', category: 'Hématologie', params: ['Hémoglobine', 'Globules blancs', 'Plaquettes', 'Hématocrite'] },
@@ -54,6 +61,9 @@ interface PendingExam {
   results: Record<string, { value: string; status: 'normal' | 'anormal' }>;
   createdAt: Date;
   validatedBy?: string;
+  paye: boolean;
+  prix: number;
+  referencePaiement?: string;
 }
 
 const Laboratoire = () => {
@@ -83,6 +93,8 @@ const Laboratoire = () => {
             params: catalogMatch?.params || [examen],
             results: {},
             createdAt: new Date(c.date),
+            paye: hasResult, // already done = already paid
+            prix: EXAM_PRICES[catalogMatch?.id || 'nfs'] || 8000,
           });
         });
       });
@@ -113,6 +125,8 @@ const Laboratoire = () => {
             params: catalogMatch?.params || [lr.type],
             results: {},
             createdAt: new Date(lr.date),
+            paye: lr.paye || false,
+            prix: EXAM_PRICES[catalogMatch?.id || 'nfs'] || 8000,
           });
           processedExamIdsRef.current.add(examId);
         }
@@ -139,6 +153,8 @@ const Laboratoire = () => {
                 params: catalogMatch?.params || [examen],
                 results: {},
                 createdAt: new Date(c.date),
+                paye: false,
+                prix: EXAM_PRICES[catalogMatch?.id || 'nfs'] || 8000,
               });
             }
             processedExamIdsRef.current.add(examId);
@@ -191,6 +207,8 @@ const Laboratoire = () => {
       params: catalog.params,
       results: {},
       createdAt: new Date(),
+      paye: false,
+      prix: EXAM_PRICES[catalog.id] || 8000,
     };
     setPendingExams(prev => [exam, ...prev]);
     setShowNewExamDialog(false);
@@ -199,8 +217,21 @@ const Laboratoire = () => {
     toast.success(`Examen "${catalog.name}" créé pour ${patient.prenom} ${patient.nom}`);
   };
 
+  // Confirm payment for an exam
+  const handleConfirmPayment = (examId: string) => {
+    setPendingExams(prev => prev.map(e => e.id === examId ? { ...e, paye: true, referencePaiement: `REC-${Date.now().toString(36).toUpperCase()}` } : e));
+    toast.success('💰 Paiement confirmé – L\'examen peut être lancé');
+  };
+
   // Start processing an exam
   const handleStartExam = (examId: string) => {
+    const exam = pendingExams.find(e => e.id === examId);
+    if (exam && !exam.paye) {
+      toast.error('❌ Paiement requis avant de lancer l\'analyse', {
+        description: `Montant: ${exam.prix.toLocaleString()} FCFA – Veuillez confirmer le paiement`
+      });
+      return;
+    }
     setPendingExams(prev => prev.map(e => e.id === examId ? { ...e, status: 'in_progress' } : e));
     toast.info('🧪 Analyse lancée – Prélèvement en cours');
   };
@@ -267,8 +298,11 @@ const Laboratoire = () => {
     });
   };
 
-  const getStatusBadge = (status: PendingExam['status']) => {
-    switch (status) {
+  const getStatusBadge = (exam: PendingExam) => {
+    if (exam.status === 'pending' && !exam.paye) {
+      return <Badge variant="destructive" className="text-[10px] gap-1"><Banknote className="w-3 h-3" />Non payé</Badge>;
+    }
+    switch (exam.status) {
       case 'pending': return <Badge variant="secondary" className="text-[10px] gap-1"><Clock className="w-3 h-3" />En attente</Badge>;
       case 'in_progress': return <Badge className="text-[10px] gap-1 bg-primary animate-pulse"><Beaker className="w-3 h-3" />Analyse en cours</Badge>;
       case 'results_entry': return <Badge variant="outline" className="text-[10px] gap-1 border-warning text-warning"><FileText className="w-3 h-3" />Résultats à valider</Badge>;
@@ -280,7 +314,22 @@ const Laboratoire = () => {
   const getActionButton = (exam: PendingExam) => {
     switch (exam.status) {
       case 'pending':
-        return <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleStartExam(exam.id)}><Play className="w-3 h-3" />Lancer l'analyse</Button>;
+        if (!exam.paye) {
+          return (
+            <div className="flex flex-col gap-1">
+              <Badge variant="outline" className="text-[9px] justify-center">{exam.prix.toLocaleString()} FCFA</Badge>
+              <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleConfirmPayment(exam.id)}>
+                <Banknote className="w-3 h-3" />Confirmer paiement
+              </Button>
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge variant="outline" className="text-[9px] justify-center border-green-500 text-green-600"><ShieldCheck className="w-3 h-3 mr-0.5" />Payé</Badge>
+            <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleStartExam(exam.id)}><Play className="w-3 h-3" />Lancer l'analyse</Button>
+          </div>
+        );
       case 'in_progress':
         return <Button size="sm" className="h-7 text-xs gap-1" variant="outline" onClick={() => handleOpenResults(exam)}><FileText className="w-3 h-3" />Saisir résultats</Button>;
       case 'results_entry':
@@ -381,10 +430,13 @@ const Laboratoire = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-sm text-foreground">{exam.patientName}</p>
                           <Badge variant="outline" className="text-[9px]">{exam.nhid}</Badge>
-                          {getStatusBadge(exam.status)}
+                          {getStatusBadge(exam)}
                         </div>
                         <p className="text-xs text-primary font-medium">🧪 {exam.examName}</p>
-                        <p className="text-[11px] text-muted-foreground">{exam.category} • Prescrit par {exam.prescriber}</p>
+                        <p className="text-[11px] text-muted-foreground">{exam.category} • Prescrit par {exam.prescriber} • <span className="font-medium">{exam.prix.toLocaleString()} FCFA</span></p>
+                        {exam.paye && exam.referencePaiement && (
+                          <p className="text-[10px] text-green-600">✅ Payé – Réf: {exam.referencePaiement}</p>
+                        )}
                         
                         {/* Show entered results preview */}
                         {(exam.status === 'results_entry' || exam.status === 'validated') && Object.keys(exam.results).length > 0 && (
@@ -425,7 +477,7 @@ const Laboratoire = () => {
                     <p className="font-semibold text-sm text-foreground">{exam.patientName} ({exam.nhid})</p>
                     <p className="text-xs text-primary">{exam.examName} • {exam.category}</p>
                   </div>
-                  {getStatusBadge(exam.status)}
+                  {getStatusBadge(exam)}
                 </div>
                 {Object.keys(exam.results).length > 0 && (
                   <div className="rounded-lg border border-border overflow-hidden">

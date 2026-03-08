@@ -15,7 +15,7 @@ import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import {
   Pill, AlertTriangle, TrendingDown, CheckCircle, Package, Send, Search,
   ShoppingCart, Printer, User, Clock, XCircle, Shield, FileText, BarChart3,
-  RefreshCw, Eye, Plus, Minus, Activity, Thermometer, Droplets
+  RefreshCw, Eye, Plus, Minus, Activity, Thermometer, Droplets, Banknote, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -35,12 +35,15 @@ interface DispensationRecord {
   patientName: string;
   nhid: string;
   prescriptionId: string;
-  medicaments: { nom: string; dosage: string; frequence: string; duree: string; dispensed: boolean; lotNumber?: string }[];
+  medicaments: { nom: string; dosage: string; frequence: string; duree: string; dispensed: boolean; lotNumber?: string; prix?: number }[];
   status: 'pending' | 'in_progress' | 'dispensed' | 'rejected';
   timestamp: Date;
   pharmacist?: string;
   verificationNotes?: string;
   rejectionReason?: string;
+  paye: boolean;
+  totalPrix: number;
+  referencePaiement?: string;
 }
 
 interface StockMovement {
@@ -52,6 +55,18 @@ interface StockMovement {
   motif: string;
   pharmacist: string;
 }
+
+const MED_PRICES: Record<string, number> = {
+  'Artésunate': 3500, 'Paracétamol': 500, 'Ceftriaxone': 4000, 'Amoxicilline': 1500,
+  'Métronidazole': 1000, 'Insuline': 8000, 'Aspirine': 300, 'Clopidogrel': 2500,
+  'Morphine': 5000, 'Diazépam': 1500, 'Ibuprofène': 800, 'Atorvastatine': 2000,
+  'Nicardipine': 3000, 'Sulfate de Magnésium': 2500, 'Héparine': 6000,
+};
+
+const getMedPrice = (nom: string): number => {
+  const baseName = nom.split(' ')[0];
+  return MED_PRICES[baseName] || 1500;
+};
 
 const Pharmacie = () => {
   const { patients, advancePatient, getPatientsByStep, updatePrescriptionStatus } = usePatientJourney();
@@ -66,15 +81,19 @@ const Pharmacie = () => {
     const records: DispensationRecord[] = [];
     patients.forEach(p => {
       p.prescriptions.filter(pr => pr.statut === 'en_attente').forEach(pr => {
+        const meds = pr.medicaments.map(m => ({ ...m, dispensed: false, lotNumber: `LOT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`, prix: getMedPrice(m.nom) }));
+        const totalPrix = meds.reduce((sum, m) => sum + (m.prix || 0), 0);
         records.push({
           id: `disp-${pr.id}`,
           patientId: p.id,
           patientName: `${p.prenom} ${p.nom}`,
           nhid: p.nhid,
           prescriptionId: pr.id,
-          medicaments: pr.medicaments.map(m => ({ ...m, dispensed: false, lotNumber: `LOT-${Math.random().toString(36).substr(2, 6).toUpperCase()}` })),
+          medicaments: meds,
           status: 'pending',
           timestamp: new Date(pr.date),
+          paye: false,
+          totalPrix,
         });
       });
     });
@@ -133,7 +152,22 @@ const Pharmacie = () => {
     return alerts;
   };
 
+  // Confirm payment for a dispensation
+  const handleConfirmPharmacyPayment = (dispId: string) => {
+    setDispensations(prev => prev.map(d => d.id === dispId ? { ...d, paye: true, referencePaiement: `PHARM-${Date.now().toString(36).toUpperCase()}` } : d));
+    if (selectedDispensation && selectedDispensation.id === dispId) {
+      setSelectedDispensation(prev => prev ? { ...prev, paye: true, referencePaiement: `PHARM-${Date.now().toString(36).toUpperCase()}` } : prev);
+    }
+    toast.success('💰 Paiement médicaments confirmé');
+  };
+
   const handleOpenDispense = (disp: DispensationRecord) => {
+    if (!disp.paye) {
+      toast.error('❌ Paiement requis avant la dispensation', {
+        description: `Montant total: ${disp.totalPrix.toLocaleString()} FCFA`
+      });
+      return;
+    }
     const updated = { ...disp, medicaments: disp.medicaments.map(m => ({ ...m, dispensed: false })) };
     setSelectedDispensation(updated);
     setVerificationNotes('');
@@ -316,9 +350,23 @@ const Pharmacie = () => {
                         <Eye className="w-3 h-3" /> Dossier
                       </Button>
                       {patientDisp ? (
-                        <Button size="sm" className="text-xs gap-1 h-7" onClick={() => handleOpenDispense(patientDisp)}>
-                          <ShoppingCart className="w-3 h-3" /> Dispenser
-                        </Button>
+                        <>
+                          {!patientDisp.paye ? (
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="text-[9px] justify-center">{patientDisp.totalPrix.toLocaleString()} FCFA</Badge>
+                              <Button size="sm" className="text-xs gap-1 h-7 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleConfirmPharmacyPayment(patientDisp.id)}>
+                                <Banknote className="w-3 h-3" /> Payer
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="text-[9px] justify-center border-green-500 text-green-600"><ShieldCheck className="w-3 h-3 mr-0.5" />Payé</Badge>
+                              <Button size="sm" className="text-xs gap-1 h-7" onClick={() => handleOpenDispense(patientDisp)}>
+                                <ShoppingCart className="w-3 h-3" /> Dispenser
+                              </Button>
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <Button size="sm" variant="secondary" className="text-xs gap-1 h-7" onClick={() => handleQuickDispense(p.id)}>
                           <Send className="w-3 h-3" /> Sortie
@@ -385,9 +433,21 @@ const Pharmacie = () => {
                           </div>
                         </div>
                         <div className="flex flex-col gap-1.5">
-                          <Button size="sm" className="h-8 text-xs gap-1" onClick={() => handleOpenDispense(disp)}>
-                            <ShoppingCart className="w-3 h-3" /> Dispenser
-                          </Button>
+                          {!disp.paye ? (
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="text-[9px] justify-center font-mono">{disp.totalPrix.toLocaleString()} FCFA</Badge>
+                              <Button size="sm" className="h-8 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleConfirmPharmacyPayment(disp.id)}>
+                                <Banknote className="w-3 h-3" /> Confirmer paiement
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="text-[9px] justify-center border-green-500 text-green-600"><ShieldCheck className="w-3 h-3 mr-0.5" />Payé ✓</Badge>
+                              <Button size="sm" className="h-8 text-xs gap-1" onClick={() => handleOpenDispense(disp)}>
+                                <ShoppingCart className="w-3 h-3" /> Dispenser
+                              </Button>
+                            </div>
+                          )}
                           <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => handleViewPatientInfo(disp.patientId)}>
                             <Eye className="w-3 h-3" /> Dossier
                           </Button>
