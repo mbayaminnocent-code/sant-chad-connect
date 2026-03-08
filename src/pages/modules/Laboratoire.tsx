@@ -414,6 +414,9 @@ const Laboratoire = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="bg-muted/60">
           <TabsTrigger value="worklist">📋 Worklist ({worklistExams.length})</TabsTrigger>
+          <TabsTrigger value="priority_queue" className="gap-1.5">
+            <ListOrdered className="w-3.5 h-3.5" />File Prioritaire
+          </TabsTrigger>
           <TabsTrigger value="completed">✅ Terminés ({completedExams.length})</TabsTrigger>
           <TabsTrigger value="automates">⚙️ Automates</TabsTrigger>
         </TabsList>
