@@ -1,3 +1,4 @@
+/* App.tsx - Main application entry */
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,6 +30,15 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const AccessDenied = ({ msg }: { msg?: string }) => (
+  <div className="flex items-center justify-center h-full p-12">
+    <div className="text-center space-y-2">
+      <p className="text-4xl">🔒</p>
+      <h2 className="text-xl font-bold text-foreground">Accès Restreint</h2>
+      <p className="text-sm text-muted-foreground">{msg || "Vous n'avez pas les droits pour accéder à ce module."}</p>
+    </div>
+  </div>
+);
 
 const AppLayout = () => {
   const { role } = useAuth();
@@ -47,15 +57,12 @@ const AppLayout = () => {
                   '/accueil'
                 } replace />
               } />
-              {/* Doctor-restricted routes */}
               <Route path="/espace-medecin" element={role === 'doctor' ? <EspaceMedecin /> : <AccessDenied />} />
               <Route path="/dpi" element={role === 'doctor' ? <DPI /> : <AccessDenied />} />
               <Route path="/bloc-operatoire" element={['doctor', 'director'].includes(role) ? <BlocOperatoire /> : <AccessDenied />} />
               <Route path="/planning" element={<Planning />} />
               <Route path="/patients" element={<PatientsList />} />
               <Route path="/ia" element={<IAMarate />} />
-              
-              {/* Non-doctor routes (doctors cannot access) */}
               <Route path="/accueil" element={role !== 'doctor' ? <Accueil /> : <Navigate to="/espace-medecin" replace />} />
               <Route path="/triage" element={role !== 'doctor' ? <Triage /> : <AccessDenied msg="Le triage est géré par les infirmiers." />} />
               <Route path="/laboratoire" element={role !== 'doctor' ? <Laboratoire /> : <AccessDenied msg="Le laboratoire est géré par les techniciens de labo." />} />
@@ -76,16 +83,6 @@ const AppLayout = () => {
   );
 };
 
-const AccessDenied = ({ msg }: { msg?: string }) => (
-  <div className="flex items-center justify-center h-full p-12">
-    <div className="text-center space-y-2">
-      <p className="text-4xl">🔒</p>
-      <h2 className="text-xl font-bold text-foreground">Accès Restreint</h2>
-      <p className="text-sm text-muted-foreground">{msg || "Vous n'avez pas les droits pour accéder à ce module."}</p>
-    </div>
-  </div>
-);
-
 const AuthGate = () => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <AppLayout /> : <Login />;
@@ -99,11 +96,11 @@ const App = () => (
       <AuthProvider>
         <AppProvider>
           <PatientJourneyProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/*" element={<AuthGate />} />
-            </Routes>
-          </BrowserRouter>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/*" element={<AuthGate />} />
+              </Routes>
+            </BrowserRouter>
           </PatientJourneyProvider>
         </AppProvider>
       </AuthProvider>
