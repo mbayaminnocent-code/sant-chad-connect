@@ -69,7 +69,7 @@ const getMedPrice = (nom: string): number => {
 };
 
 const Pharmacie = () => {
-  const { patients, advancePatient, getPatientsByStep, updatePrescriptionStatus } = usePatientJourney();
+  const { patients, advancePatient, getPatientsByStep, updatePrescriptionStatus, hasReceiptForType, getReceiptForType } = usePatientJourney();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('dispensation');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'expiring'>('all');
