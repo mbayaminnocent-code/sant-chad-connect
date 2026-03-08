@@ -90,6 +90,7 @@ const App = () => (
               <Route path="/*" element={<AuthGate />} />
             </Routes>
           </BrowserRouter>
+          </PatientJourneyProvider>
         </AppProvider>
       </AuthProvider>
     </TooltipProvider>
