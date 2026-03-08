@@ -470,6 +470,7 @@ const Planning = () => {
           <TabsTrigger value="echanges">🔄 Échanges ({dutyExchanges.filter(e => e.statut !== 'valide' && e.statut !== 'refuse').length})</TabsTrigger>
           <TabsTrigger value="patients">👥 Patients</TabsTrigger>
           <TabsTrigger value="transferts">🔄 Transferts ({pendingReferrals.length})</TabsTrigger>
+          <TabsTrigger value="stats">📊 Statistiques</TabsTrigger>
         </TabsList>
 
         {/* ─── Rendez-vous Tab ─── */}
@@ -1018,6 +1019,161 @@ const Planning = () => {
               </Card>
             );
           })}
+        </TabsContent>
+
+        {/* ─── Statistiques mensuelles Tab ─── */}
+        <TabsContent value="stats" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <Button variant="outline" size="sm" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <CardTitle className="text-lg capitalize">
+                  📊 Statistiques – {format(currentMonth, 'MMMM yyyy', { locale: fr })}
+                </CardTitle>
+                <Button variant="outline" size="sm" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Personnel</TableHead>
+                      <TableHead>Rôle</TableHead>
+                      <TableHead className="text-center">Gardes jour</TableHead>
+                      <TableHead className="text-center">Gardes nuit</TableHead>
+                      <TableHead className="text-center">Permanences</TableHead>
+                      <TableHead className="text-center">Astreintes</TableHead>
+                      <TableHead className="text-center">Total gardes (h)</TableHead>
+                      <TableHead className="text-center">Consultations</TableHead>
+                      <TableHead className="text-center">Opérations</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ALL_STAFF.map(staff => {
+                      const monthStart = format(startOfMonth(currentMonth), 'yyyy-MM');
+                      const staffDuties = duties.filter(d => d.staffId === staff.id && d.date.startsWith(monthStart));
+                      const gardesJour = staffDuties.filter(d => d.type === 'garde_jour');
+                      const gardesNuit = staffDuties.filter(d => d.type === 'garde_nuit');
+                      const permanences = staffDuties.filter(d => d.type === 'permanence');
+                      const astreintes = staffDuties.filter(d => d.type === 'astreinte');
+
+                      const calcHours = (d: typeof staffDuties[0]) => {
+                        const [h1, m1] = d.heureDebut.split(':').map(Number);
+                        const [h2, m2] = d.heureFin.split(':').map(Number);
+                        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+                        if (diff < 0) diff += 24 * 60; // overnight
+                        return diff / 60;
+                      };
+                      const totalHours = staffDuties.reduce((sum, d) => sum + calcHours(d), 0);
+
+                      const staffAppts = appointments.filter(a =>
+                        a.doctorId === staff.id && a.date.startsWith(monthStart) && a.statut !== 'annule'
+                      );
+                      const consultations = staffAppts.filter(a => a.type === 'consultation' || a.type === 'suivi').length;
+                      const operations = staffAppts.filter(a => a.type === 'operation').length;
+
+                      const hasData = staffDuties.length > 0 || staffAppts.length > 0;
+                      if (!hasData) return null;
+
+                      return (
+                        <TableRow key={staff.id}>
+                          <TableCell className="text-sm font-medium">{staff.nom}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px]">
+                              {staff.role === 'medecin' ? '🩺 Médecin' : '💉 Infirmier'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {gardesJour.length > 0 ? (
+                              <Badge className="text-[10px] bg-primary/10 text-primary">{gardesJour.length}</Badge>
+                            ) : <span className="text-muted-foreground text-xs">—</span>}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {gardesNuit.length > 0 ? (
+                              <Badge className="text-[10px] bg-secondary/80 text-secondary-foreground">{gardesNuit.length}</Badge>
+                            ) : <span className="text-muted-foreground text-xs">—</span>}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {permanences.length > 0 ? (
+                              <Badge className="text-[10px] bg-accent text-accent-foreground">{permanences.length}</Badge>
+                            ) : <span className="text-muted-foreground text-xs">—</span>}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {astreintes.length > 0 ? (
+                              <Badge className="text-[10px] bg-muted text-muted-foreground">{astreintes.length}</Badge>
+                            ) : <span className="text-muted-foreground text-xs">—</span>}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className={`text-sm font-bold ${totalHours > 60 ? 'text-destructive' : totalHours > 40 ? 'text-primary' : 'text-foreground'}`}>
+                              {totalHours.toFixed(0)}h
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {consultations > 0 ? (
+                              <Badge className="text-[10px] bg-primary/10 text-primary">{consultations}</Badge>
+                            ) : <span className="text-muted-foreground text-xs">—</span>}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {operations > 0 ? (
+                              <Badge className="text-[10px] bg-destructive/10 text-destructive">{operations}</Badge>
+                            ) : <span className="text-muted-foreground text-xs">—</span>}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Summary cards */}
+              {(() => {
+                const monthStart = format(startOfMonth(currentMonth), 'yyyy-MM');
+                const monthDuties = duties.filter(d => d.date.startsWith(monthStart));
+                const monthAppts = appointments.filter(a => a.date.startsWith(monthStart) && a.statut !== 'annule');
+                const totalGardeHours = monthDuties.reduce((sum, d) => {
+                  const [h1, m1] = d.heureDebut.split(':').map(Number);
+                  const [h2, m2] = d.heureFin.split(':').map(Number);
+                  let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+                  if (diff < 0) diff += 24 * 60;
+                  return sum + diff / 60;
+                }, 0);
+
+                return (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                    <Card>
+                      <CardContent className="p-3 text-center">
+                        <p className="text-2xl font-bold text-primary">{monthDuties.length}</p>
+                        <p className="text-[10px] text-muted-foreground">Total gardes</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-3 text-center">
+                        <p className="text-2xl font-bold text-foreground">{totalGardeHours.toFixed(0)}h</p>
+                        <p className="text-[10px] text-muted-foreground">Heures de garde</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-3 text-center">
+                        <p className="text-2xl font-bold text-secondary">{monthAppts.filter(a => a.type === 'consultation' || a.type === 'suivi').length}</p>
+                        <p className="text-[10px] text-muted-foreground">Consultations</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-3 text-center">
+                        <p className="text-2xl font-bold text-destructive">{monthAppts.filter(a => a.type === 'operation').length}</p>
+                        <p className="text-[10px] text-muted-foreground">Opérations</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
