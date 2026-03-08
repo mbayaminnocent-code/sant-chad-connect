@@ -555,6 +555,36 @@ const Imagerie = () => {
           />
         </TabsContent>
 
+        {/* Alertes */}
+        <TabsContent value="alertes">
+          <WaitTimeAlerts
+            items={allRequests.map(r => ({
+              id: r.id, patientId: r.patientId, patientName: r.patientName, nhid: r.nhid,
+              urgence: r.urgence, examName: r.examen,
+              status: r.statut === 'en_attente' ? 'waiting' as const : r.statut === 'en_cours' ? 'in_progress' as const : 'done' as const,
+              arrivalTime: new Date(r.date),
+              estimatedDuration: IMAGING_TYPES.find(t => t.value === r.type)?.duree ? parseInt(IMAGING_TYPES.find(t => t.value === r.type)!.duree) : 20,
+            }))}
+            serviceName="Imagerie"
+          />
+        </TabsContent>
+
+        {/* Dashboard */}
+        <TabsContent value="dashboard">
+          <ServiceDashboard
+            items={allRequests.map(r => ({
+              id: r.id, patientId: r.patientId, patientName: r.patientName, nhid: r.nhid,
+              urgence: r.urgence, examName: r.examen,
+              status: r.statut === 'en_attente' ? 'waiting' as const : r.statut === 'en_cours' ? 'in_progress' as const : 'done' as const,
+              arrivalTime: new Date(r.date),
+              estimatedDuration: IMAGING_TYPES.find(t => t.value === r.type)?.duree ? parseInt(IMAGING_TYPES.find(t => t.value === r.type)!.duree) : 20,
+            }))}
+            serviceName="Imagerie"
+            maxParallel={EQUIPMENT.filter(e => e.status === 'disponible').length}
+            inProgressCount={stats.enCours}
+          />
+        </TabsContent>
+
         {/* Résultats */}
         <TabsContent value="resultats" className="space-y-3">
           {completedResults.length === 0 ? (
