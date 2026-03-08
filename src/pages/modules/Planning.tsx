@@ -511,10 +511,12 @@ const Planning = () => {
 
       {/* Main Tabs */}
       <Tabs defaultValue="rdv">
-        <TabsList className="bg-muted/60">
+        <TabsList className="bg-muted/60 flex-wrap h-auto">
           <TabsTrigger value="rdv">📅 Rendez-vous ({appointments.filter(a => a.statut !== 'annule').length})</TabsTrigger>
-          <TabsTrigger value="planning">🕐 Planning médecins</TabsTrigger>
-          <TabsTrigger value="patients">👥 Patients assignés</TabsTrigger>
+          <TabsTrigger value="planning">🕐 Planning</TabsTrigger>
+          <TabsTrigger value="pauses">☕ Pauses ({breaks.length})</TabsTrigger>
+          <TabsTrigger value="gardes">🛡️ Gardes ({duties.length})</TabsTrigger>
+          <TabsTrigger value="patients">👥 Patients</TabsTrigger>
           <TabsTrigger value="transferts">🔄 Transferts ({pendingReferrals.length})</TabsTrigger>
         </TabsList>
 
