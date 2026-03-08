@@ -81,15 +81,19 @@ const Pharmacie = () => {
     const records: DispensationRecord[] = [];
     patients.forEach(p => {
       p.prescriptions.filter(pr => pr.statut === 'en_attente').forEach(pr => {
+        const meds = pr.medicaments.map(m => ({ ...m, dispensed: false, lotNumber: `LOT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`, prix: getMedPrice(m.nom) }));
+        const totalPrix = meds.reduce((sum, m) => sum + (m.prix || 0), 0);
         records.push({
           id: `disp-${pr.id}`,
           patientId: p.id,
           patientName: `${p.prenom} ${p.nom}`,
           nhid: p.nhid,
           prescriptionId: pr.id,
-          medicaments: pr.medicaments.map(m => ({ ...m, dispensed: false, lotNumber: `LOT-${Math.random().toString(36).substr(2, 6).toUpperCase()}` })),
+          medicaments: meds,
           status: 'pending',
           timestamp: new Date(pr.date),
+          paye: false,
+          totalPrix,
         });
       });
     });
