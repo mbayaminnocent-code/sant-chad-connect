@@ -101,6 +101,13 @@ const DOCTORS: Doctor[] = [
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
+const SERVICES_MAP: Record<string, string> = {
+  general: 'Médecine Générale', cardio: 'Cardiologie', chirurgie: 'Chirurgie', gyneco: 'Gynécologie',
+  pediatrie: 'Pédiatrie', neuro: 'Neurologie', ortho: 'Orthopédie', pneumo: 'Pneumologie',
+  onco: 'Oncologie', reanimation: 'Réanimation', interne: 'Médecine Interne',
+  ophtalmo: 'Ophtalmologie', uro: 'Urologie', dermato: 'Dermatologie', maternite: 'Maternité',
+};
+
 // ─── Nurses ───
 const NURSES: StaffMember[] = [
   { id: 'inf1', nom: 'Fatima Ali', role: 'infirmier', service: 'general' },
