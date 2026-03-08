@@ -181,6 +181,7 @@ export default function ServiceDashboard({ items, serviceName, maxParallel, inPr
       </div>
 
       <div ref={dashboardRef} className="space-y-4">
+      {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="border-border/50">
           <CardContent className="p-3">
