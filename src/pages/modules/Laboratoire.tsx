@@ -89,8 +89,71 @@ const Laboratoire = () => {
     });
     return exams;
   });
+  const processedExamIdsRef = useRef<Set<string>>(new Set(pendingExams.map(e => e.id)));
 
-  // Dialog states
+  // Sync: detect new lab requests from DPI or other modules
+  useEffect(() => {
+    const newExams: PendingExam[] = [];
+    patients.forEach(p => {
+      // Check labResults that are pending (sent from DPI but not yet in worklist)
+      p.labResults.forEach((lr, idx) => {
+        const examId = `lr-${p.id}-${lr.id}`;
+        if (lr.statut === 'en_cours' && !processedExamIdsRef.current.has(examId)) {
+          const catalogMatch = EXAM_CATALOG.find(e => lr.type.toLowerCase().includes(e.name.toLowerCase().substring(0, 5)));
+          newExams.push({
+            id: examId,
+            patientId: p.id,
+            patientName: `${p.prenom} ${p.nom}`,
+            nhid: p.nhid,
+            examCatalogId: catalogMatch?.id || 'nfs',
+            examName: lr.type,
+            category: catalogMatch?.category || 'Autre',
+            prescriber: 'DPI – Médecin',
+            status: 'pending',
+            params: catalogMatch?.params || [lr.type],
+            results: {},
+            createdAt: new Date(lr.date),
+          });
+          processedExamIdsRef.current.add(examId);
+        }
+      });
+
+      // Also check consultations for new exams not yet tracked
+      p.consultations.forEach(c => {
+        c.examens.forEach((examen, idx) => {
+          const examId = `consult-${p.id}-${c.date}-${idx}`;
+          if (!processedExamIdsRef.current.has(examId)) {
+            const catalogMatch = EXAM_CATALOG.find(e => examen.toLowerCase().includes(e.name.toLowerCase().substring(0, 5)));
+            const hasResult = p.labResults.some(r => r.type.toLowerCase().includes(examen.toLowerCase().substring(0, 5)) && r.statut === 'termine');
+            if (!hasResult) {
+              newExams.push({
+                id: examId,
+                patientId: p.id,
+                patientName: `${p.prenom} ${p.nom}`,
+                nhid: p.nhid,
+                examCatalogId: catalogMatch?.id || 'nfs',
+                examName: examen,
+                category: catalogMatch?.category || 'Autre',
+                prescriber: c.docteur,
+                status: 'pending',
+                params: catalogMatch?.params || [examen],
+                results: {},
+                createdAt: new Date(c.date),
+              });
+            }
+            processedExamIdsRef.current.add(examId);
+          }
+        });
+      });
+    });
+
+    if (newExams.length > 0) {
+      setPendingExams(prev => [...newExams, ...prev]);
+      toast.info(`📥 ${newExams.length} nouvel(les) demande(s) d'examen reçue(s)`, {
+        description: 'Worklist mise à jour automatiquement'
+      });
+    }
+  }, [patients]);
   const [showNewExamDialog, setShowNewExamDialog] = useState(false);
   const [showResultsDialog, setShowResultsDialog] = useState(false);
   const [selectedExam, setSelectedExam] = useState<PendingExam | null>(null);
