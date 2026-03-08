@@ -20,6 +20,13 @@ const EXAM_PRICES: Record<string, number> = {
   'ionogramme': 12000, 'pcr_meningo': 25000,
 };
 
+const EXAM_DURATIONS: Record<string, number> = {
+  'nfs': 15, 'ge': 20, 'glycemie': 10, 'creat': 20,
+  'bilan_hep': 30, 'troponine': 25, 'hba1c': 15,
+  'proteinurie': 45, 'hemoculture': 60, 'bk': 30,
+  'ionogramme': 20, 'pcr_meningo': 45,
+};
+
 const EXAM_CATALOG = [
   { id: 'nfs', name: 'NFS Complète', category: 'Hématologie', params: ['Hémoglobine', 'Globules blancs', 'Plaquettes', 'Hématocrite'] },
   { id: 'ge', name: 'Goutte Épaisse + Frottis', category: 'Parasitologie', params: ['P. falciparum', 'Densité parasitaire'] },
