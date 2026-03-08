@@ -330,7 +330,75 @@ const Planning = () => {
     toast.success(`Rendez-vous ${labels[statut]}`);
   };
 
-  // ─── Computed ───
+  // ─── Break & Duty Handlers ───
+  const handleCreateBreak = () => {
+    if (!brkStaffId || !brkJour || !brkDebut || !brkFin) {
+      toast.error('Veuillez remplir tous les champs'); return;
+    }
+    const newBrk: BreakRecord = {
+      id: `brk-${Date.now()}`, staffId: brkStaffId, jour: brkJour,
+      heureDebut: brkDebut, heureFin: brkFin, type: brkType, statut: 'planifie',
+    };
+    setBreaks(prev => [...prev, newBrk]);
+    setShowBreakDialog(false);
+    const staff = ALL_STAFF.find(s => s.id === brkStaffId);
+    toast.success(`Pause ajoutée pour ${staff?.nom}`, { description: `${brkJour} ${brkDebut}-${brkFin}` });
+    setBrkStaffId(''); setBrkJour(''); setBrkDebut(''); setBrkFin(''); setBrkType('dejeuner');
+  };
+
+  const handleCreateDuty = () => {
+    if (!dutyStaffId || !dutyDate || !dutyDebut || !dutyFin || !dutyService) {
+      toast.error('Veuillez remplir tous les champs obligatoires'); return;
+    }
+    const newDuty: DutyRecord = {
+      id: `grd-${Date.now()}`, staffId: dutyStaffId, date: dutyDate,
+      heureDebut: dutyDebut, heureFin: dutyFin, type: dutyType,
+      service: dutyService, statut: 'planifie', notes: dutyNotes || undefined,
+    };
+    setDuties(prev => [...prev, newDuty]);
+    setShowDutyDialog(false);
+    const staff = ALL_STAFF.find(s => s.id === dutyStaffId);
+    toast.success(`Garde/permanence ajoutée pour ${staff?.nom}`, { description: `${dutyDate} ${dutyDebut}-${dutyFin}` });
+    setDutyStaffId(''); setDutyDate(''); setDutyDebut(''); setDutyFin(''); setDutyType('garde_jour'); setDutyService(''); setDutyNotes('');
+  };
+
+  const handleDeleteBreak = (id: string) => {
+    setBreaks(prev => prev.filter(b => b.id !== id));
+    toast.success('Pause supprimée');
+  };
+
+  const handleDeleteDuty = (id: string) => {
+    setDuties(prev => prev.filter(d => d.id !== id));
+    toast.success('Garde supprimée');
+  };
+
+  const handleDutyStatusChange = (id: string, statut: DutyRecord['statut']) => {
+    setDuties(prev => prev.map(d => d.id === id ? { ...d, statut } : d));
+    const labels: Record<string, string> = { planifie: 'Planifié', en_cours: 'En cours', termine: 'Terminé' };
+    toast.success(`Garde ${labels[statut]}`);
+  };
+
+  const getBreakTypeLabel = (type: BreakRecord['type']) => {
+    const m: Record<string, { label: string; icon: string; style: string }> = {
+      dejeuner: { label: 'Déjeuner', icon: '🍽️', style: 'bg-accent text-accent-foreground' },
+      pause_courte: { label: 'Pause courte', icon: '☕', style: 'bg-muted text-muted-foreground' },
+      pause_longue: { label: 'Pause longue', icon: '🛋️', style: 'bg-primary/10 text-primary' },
+    };
+    const t = m[type];
+    return <Badge className={`text-[10px] ${t.style}`}>{t.icon} {t.label}</Badge>;
+  };
+
+  const getDutyTypeLabel = (type: DutyRecord['type']) => {
+    const m: Record<string, { label: string; icon: string; style: string }> = {
+      garde_jour: { label: 'Garde jour', icon: '☀️', style: 'bg-primary/10 text-primary' },
+      garde_nuit: { label: 'Garde nuit', icon: '🌙', style: 'bg-secondary/80 text-secondary-foreground' },
+      permanence: { label: 'Permanence', icon: '🏥', style: 'bg-accent text-accent-foreground' },
+      astreinte: { label: 'Astreinte', icon: '📱', style: 'bg-muted text-muted-foreground' },
+    };
+    const t = m[type];
+    return <Badge className={`text-[10px] ${t.style}`}>{t.icon} {t.label}</Badge>;
+  };
+
   const filteredAppointments = useMemo(() => {
     let result = appointments;
     if (selectedDoctor !== 'all') result = result.filter(a => a.doctorId === selectedDoctor);
