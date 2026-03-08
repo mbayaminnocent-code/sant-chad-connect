@@ -5,21 +5,32 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SERVICES } from '@/data/mockData';
-import { Banknote, Receipt, QrCode, CreditCard, Smartphone, CheckCircle, TrendingUp } from 'lucide-react';
+import { usePatientJourney } from '@/contexts/PatientJourneyContext';
+import PatientJourneyTracker from '@/components/PatientJourneyTracker';
+import { Banknote, Receipt, QrCode, CreditCard, CheckCircle, TrendingUp, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Facturation = () => {
-  const [paymentData, setPaymentData] = useState({
-    patientId: '', montant: '', modePaiement: 'especes', service: 'general',
-  });
+  const { patients, advancePatient, getPatientsByStep } = usePatientJourney();
+  const [paymentData, setPaymentData] = useState({ patientId: '', montant: '', modePaiement: 'especes', service: 'general' });
   const [step, setStep] = useState(1);
 
+  const patientsAtPaiement = getPatientsByStep('paiement');
+
   const handlePayment = () => {
-    toast.success('Paiement enregistré avec succès!', {
-      description: `${Number(paymentData.montant).toLocaleString()} FCFA – Reçu thermique imprimé`
-    });
+    // Find the patient and advance them
+    const p = patients.find(pt => pt.nhid === paymentData.patientId || pt.id === paymentData.patientId);
+    if (p) {
+      advancePatient(p.id, 'triage', 'Facturation', `Paiement ${Number(paymentData.montant).toLocaleString()} FCFA – ${paymentData.modePaiement}`);
+    } else {
+      toast.success('Paiement enregistré', { description: `${Number(paymentData.montant).toLocaleString()} FCFA – Reçu imprimé` });
+    }
     setStep(1);
     setPaymentData({ patientId: '', montant: '', modePaiement: 'especes', service: 'general' });
+  };
+
+  const handleQuickPay = (patientId: string) => {
+    advancePatient(patientId, 'triage', 'Facturation', 'Paiement rapide effectué – Dirigé vers le triage');
   };
 
   const recentPayments = [
@@ -27,7 +38,6 @@ const Facturation = () => {
     { id: 2, patient: 'Hassan Idriss', montant: 45000, service: 'Labo + Imagerie', mode: 'Mobile Money', heure: '09:10' },
     { id: 3, patient: 'Aïcha Oumar', montant: 25000, service: 'Hospitalisation', mode: 'CNAM', heure: '09:30' },
     { id: 4, patient: 'Deby Moussa', montant: 8000, service: 'Pédiatrie', mode: 'Espèces', heure: '10:00' },
-    { id: 5, patient: 'Adam Brahim', montant: 35000, service: 'Neurologie', mode: 'Tiers-payant', heure: '10:15' },
   ];
 
   return (
@@ -39,10 +49,10 @@ const Facturation = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
+          { label: 'Patients à payer', value: String(patientsAtPaiement.length), icon: Banknote, color: 'text-warning' },
           { label: 'Recettes du jour', value: '847 500 FCFA', icon: Banknote, color: 'text-secondary' },
           { label: 'Transactions', value: '47', icon: Receipt, color: 'text-primary' },
-          { label: 'CNAM / Tiers-payant', value: '12', icon: CreditCard, color: 'text-muted-foreground' },
-          { label: 'Progression vs hier', value: '+35%', icon: TrendingUp, color: 'text-secondary' },
+          { label: 'Progression', value: '+35%', icon: TrendingUp, color: 'text-secondary' },
         ].map(s => (
           <Card key={s.label}>
             <CardContent className="p-4 flex items-center gap-3">
@@ -55,6 +65,29 @@ const Facturation = () => {
           </Card>
         ))}
       </div>
+
+      {/* Patients waiting for payment */}
+      {patientsAtPaiement.length > 0 && (
+        <Card className="border-warning/30">
+          <CardHeader><CardTitle className="text-base">💰 Patients en attente de paiement</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {patientsAtPaiement.map(p => (
+              <div key={p.id} className="p-3 rounded-lg border border-border space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{p.prenom} {p.nom}</p>
+                    <p className="text-xs text-muted-foreground">{p.nhid} • {p.pathologieActuelle}</p>
+                  </div>
+                  <Button size="sm" className="text-xs gap-1 h-7" onClick={() => handleQuickPay(p.id)}>
+                    <CheckCircle className="w-3 h-3" /> Paiement rapide → Triage
+                  </Button>
+                </div>
+                <PatientJourneyTracker patientId={p.id} compact />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Payment flow */}
@@ -72,43 +105,33 @@ const Facturation = () => {
           <CardContent className="space-y-4">
             {step === 1 && (
               <div className="space-y-3">
-                <p className="text-sm font-medium text-foreground">Étape 1: Identification du patient</p>
+                <p className="text-sm font-medium text-foreground">Étape 1: Identification</p>
                 <div className="flex gap-2">
-                  <Input placeholder="ID National ou nom du patient" value={paymentData.patientId} onChange={e => setPaymentData(d => ({ ...d, patientId: e.target.value }))} />
-                  <Button variant="outline" onClick={() => { setPaymentData(d => ({ ...d, patientId: 'TCD-2024-00001' })); toast.info('QR Code scanné'); }}>
-                    <QrCode className="w-4 h-4" />
-                  </Button>
+                  <Input placeholder="ID National ou nom" value={paymentData.patientId} onChange={e => setPaymentData(d => ({ ...d, patientId: e.target.value }))} />
+                  <Button variant="outline" onClick={() => { setPaymentData(d => ({ ...d, patientId: 'TCD-2024-00001' })); toast.info('QR scanné'); }}><QrCode className="w-4 h-4" /></Button>
                 </div>
                 <Button className="w-full" onClick={() => setStep(2)} disabled={!paymentData.patientId}>Suivant</Button>
               </div>
             )}
             {step === 2 && (
               <div className="space-y-3">
-                <p className="text-sm font-medium text-foreground">Étape 2: Détails du paiement</p>
-                <div className="space-y-2">
-                  <Input placeholder="Montant (FCFA)" type="number" value={paymentData.montant} onChange={e => setPaymentData(d => ({ ...d, montant: e.target.value }))} />
-                  <Select value={paymentData.service} onValueChange={v => setPaymentData(d => ({ ...d, service: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Service" /></SelectTrigger>
-                    <SelectContent>
-                      {SERVICES.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                      <SelectItem value="labo">Laboratoire</SelectItem>
-                      <SelectItem value="imagerie_s">Imagerie</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={paymentData.modePaiement} onValueChange={v => setPaymentData(d => ({ ...d, modePaiement: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="especes">💵 Espèces</SelectItem>
-                      <SelectItem value="mobile">📱 Mobile Money</SelectItem>
-                      <SelectItem value="cnam">🏥 CNAM / Tiers-payant</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {paymentData.modePaiement === 'cnam' && (
-                    <div className="p-2 rounded bg-accent text-xs text-accent-foreground">
-                      Ticket modérateur calculé automatiquement: 30% = {(Number(paymentData.montant) * 0.3).toLocaleString()} FCFA
-                    </div>
-                  )}
-                </div>
+                <p className="text-sm font-medium text-foreground">Étape 2: Détails</p>
+                <Input placeholder="Montant (FCFA)" type="number" value={paymentData.montant} onChange={e => setPaymentData(d => ({ ...d, montant: e.target.value }))} />
+                <Select value={paymentData.service} onValueChange={v => setPaymentData(d => ({ ...d, service: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{SERVICES.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={paymentData.modePaiement} onValueChange={v => setPaymentData(d => ({ ...d, modePaiement: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="especes">💵 Espèces</SelectItem>
+                    <SelectItem value="mobile">📱 Mobile Money</SelectItem>
+                    <SelectItem value="cnam">🏥 CNAM</SelectItem>
+                  </SelectContent>
+                </Select>
+                {paymentData.modePaiement === 'cnam' && (
+                  <div className="p-2 rounded bg-accent text-xs text-accent-foreground">Ticket modérateur: 30% = {(Number(paymentData.montant) * 0.3).toLocaleString()} FCFA</div>
+                )}
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setStep(1)}>Retour</Button>
                   <Button className="flex-1" onClick={() => setStep(3)} disabled={!paymentData.montant}>Suivant</Button>
@@ -121,22 +144,18 @@ const Facturation = () => {
                 <div className="p-4 rounded-lg bg-muted/50 space-y-2">
                   <p className="text-sm text-foreground">Patient: <strong>{paymentData.patientId}</strong></p>
                   <p className="text-sm text-foreground">Montant: <strong>{Number(paymentData.montant).toLocaleString()} FCFA</strong></p>
-                  <p className="text-sm text-foreground">Mode: <strong>{paymentData.modePaiement === 'especes' ? 'Espèces' : paymentData.modePaiement === 'mobile' ? 'Mobile Money' : 'CNAM'}</strong></p>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setStep(2)}>Retour</Button>
-                  <Button className="flex-1 gap-1" onClick={handlePayment}>
-                    <CheckCircle className="w-4 h-4" /> Insérer Paiement & Imprimer Reçu
-                  </Button>
+                  <Button className="flex-1 gap-1" onClick={handlePayment}><CheckCircle className="w-4 h-4" /> Payer & Envoyer au Triage</Button>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Recent transactions */}
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Receipt className="w-4 h-4" /> Historique des Paiements</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Receipt className="w-4 h-4" /> Historique</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {recentPayments.map(p => (
               <div key={p.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
