@@ -493,9 +493,9 @@ const Planning = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "RDV aujourd'hui", value: todayAppts.length, icon: Calendar, color: 'text-primary' },
-          { label: 'Médecins actifs', value: DOCTORS.length, icon: Stethoscope, color: 'text-secondary' },
-          { label: 'Transferts en attente', value: pendingReferrals.length, icon: ArrowRightLeft, color: 'text-destructive' },
-          { label: 'Opérations programmées', value: appointments.filter(a => a.type === 'operation' && a.statut !== 'annule' && a.statut !== 'termine').length, icon: Scissors, color: 'text-accent-foreground' },
+          { label: 'Personnel total', value: ALL_STAFF.length, icon: Users, color: 'text-secondary' },
+          { label: 'Gardes actives', value: duties.filter(d => d.statut === 'planifie' || d.statut === 'en_cours').length, icon: Shield, color: 'text-destructive' },
+          { label: 'Transferts en attente', value: pendingReferrals.length, icon: ArrowRightLeft, color: 'text-accent-foreground' },
         ].map(k => (
           <Card key={k.label}>
             <CardContent className="p-4 flex items-center gap-3">
