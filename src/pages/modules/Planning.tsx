@@ -56,6 +56,36 @@ interface Referral {
   notes?: string;
 }
 
+// ─── Staff (nurses + doctors for breaks/duties) ───
+interface StaffMember {
+  id: string;
+  nom: string;
+  role: 'medecin' | 'infirmier';
+  service: string;
+}
+
+interface BreakRecord {
+  id: string;
+  staffId: string;
+  jour: string;
+  heureDebut: string;
+  heureFin: string;
+  type: 'dejeuner' | 'pause_courte' | 'pause_longue';
+  statut: 'planifie' | 'en_cours' | 'termine';
+}
+
+interface DutyRecord {
+  id: string;
+  staffId: string;
+  date: string;
+  heureDebut: string;
+  heureFin: string;
+  type: 'garde_jour' | 'garde_nuit' | 'permanence' | 'astreinte';
+  service: string;
+  statut: 'planifie' | 'en_cours' | 'termine';
+  notes?: string;
+}
+
 // ─── Mock doctors ───
 const DOCTORS: Doctor[] = [
   { id: 'doc1', nom: 'Dr. Ibrahim Moussa', specialite: 'Médecine Générale', service: 'general' },
