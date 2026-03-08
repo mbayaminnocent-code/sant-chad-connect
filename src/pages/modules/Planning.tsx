@@ -417,13 +417,23 @@ const Planning = () => {
 
   const filteredAppointments = useMemo(() => {
     let result = appointments;
-    if (selectedDoctor !== 'all') result = result.filter(a => a.doctorId === selectedDoctor);
+    // Regular doctors only see their own appointments
+    if (isDoctor && !isChefDeService) {
+      result = result.filter(a => a.doctorId === myDoctorId);
+    } else if (isDoctor && isChefDeService) {
+      // Chef de service sees their service's doctors
+      const serviceDoctorIds = DOCTORS.filter(d => d.service === myService).map(d => d.id);
+      if (selectedDoctor !== 'all') result = result.filter(a => a.doctorId === selectedDoctor);
+      else result = result.filter(a => serviceDoctorIds.includes(a.doctorId));
+    } else {
+      if (selectedDoctor !== 'all') result = result.filter(a => a.doctorId === selectedDoctor);
+    }
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(a => a.patientName.toLowerCase().includes(q) || a.nhid.toLowerCase().includes(q) || a.motif.toLowerCase().includes(q));
     }
     return result.sort((a, b) => `${a.date}${a.heure}`.localeCompare(`${b.date}${b.heure}`));
-  }, [appointments, selectedDoctor, search]);
+  }, [appointments, selectedDoctor, search, isDoctor, isChefDeService, myDoctorId, myService]);
 
   const doctorPatients = useMemo(() => {
     const map: Record<string, { patientId: string; patientName: string; nhid: string }[]> = {};
