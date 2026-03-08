@@ -29,10 +29,11 @@ const urgenceColor = (u: number) => {
 };
 
 const Services = () => {
+  const { patients } = usePatientJourney();
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'detail'>('grid');
 
-  const getServicePatients = (serviceId: string) => MOCK_PATIENTS.filter(p => p.service === serviceId);
+  const getServicePatients = (serviceId: string) => patients.filter(p => p.service === serviceId);
 
   const getServiceStats = (serviceId: string) => {
     const patients = getServicePatients(serviceId);
