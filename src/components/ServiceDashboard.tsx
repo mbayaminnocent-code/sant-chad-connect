@@ -172,7 +172,15 @@ export default function ServiceDashboard({ items, serviceName, maxParallel, inPr
 
   return (
     <div className="space-y-4">
-      {/* KPI Row */}
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting} className="gap-2">
+          {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {exporting ? 'Génération…' : 'Exporter PDF'}
+        </Button>
+      </div>
+
+      <div ref={dashboardRef} className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="border-border/50">
           <CardContent className="p-3">
