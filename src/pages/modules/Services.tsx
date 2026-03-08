@@ -4,7 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SERVICES, MOCK_PATIENTS } from '@/data/mockData';
+import { SERVICES } from '@/data/mockData';
+import { usePatientJourney } from '@/contexts/PatientJourneyContext';
+import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import { Users, BedDouble, Clock, ArrowRight, Activity, Stethoscope, TrendingUp, UserCheck, AlertTriangle, ChevronRight, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
