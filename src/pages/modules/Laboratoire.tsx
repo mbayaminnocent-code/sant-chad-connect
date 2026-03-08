@@ -125,6 +125,8 @@ const Laboratoire = () => {
             params: catalogMatch?.params || [lr.type],
             results: {},
             createdAt: new Date(lr.date),
+            paye: lr.paye || false,
+            prix: EXAM_PRICES[catalogMatch?.id || 'nfs'] || 8000,
           });
           processedExamIdsRef.current.add(examId);
         }
