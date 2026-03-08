@@ -69,7 +69,7 @@ const getMedPrice = (nom: string): number => {
 };
 
 const Pharmacie = () => {
-  const { patients, advancePatient, getPatientsByStep, updatePrescriptionStatus } = usePatientJourney();
+  const { patients, advancePatient, getPatientsByStep, updatePrescriptionStatus, hasReceiptForType, getReceiptForType } = usePatientJourney();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('dispensation');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'expiring'>('all');
@@ -152,23 +152,24 @@ const Pharmacie = () => {
     return alerts;
   };
 
-  // Confirm payment for a dispensation
-  const handleConfirmPharmacyPayment = (dispId: string) => {
-    setDispensations(prev => prev.map(d => d.id === dispId ? { ...d, paye: true, referencePaiement: `PHARM-${Date.now().toString(36).toUpperCase()}` } : d));
-    if (selectedDispensation && selectedDispensation.id === dispId) {
-      setSelectedDispensation(prev => prev ? { ...prev, paye: true, referencePaiement: `PHARM-${Date.now().toString(36).toUpperCase()}` } : prev);
-    }
-    toast.success('💰 Paiement médicaments confirmé');
+  // Check if patient has a valid pharmacy receipt from the cashier
+  const isPatientPharmaPaid = (patientId: string): boolean => {
+    return hasReceiptForType(patientId, 'pharmacie');
+  };
+
+  const getPatientPharmaReceipt = (patientId: string) => {
+    return getReceiptForType(patientId, 'pharmacie');
   };
 
   const handleOpenDispense = (disp: DispensationRecord) => {
-    if (!disp.paye) {
-      toast.error('❌ Paiement requis avant la dispensation', {
-        description: `Montant total: ${disp.totalPrix.toLocaleString()} FCFA`
+    if (!isPatientPharmaPaid(disp.patientId)) {
+      toast.error('❌ Reçu de paiement requis', {
+        description: `Le patient doit d'abord payer à la caisse (${disp.totalPrix.toLocaleString()} FCFA). Dirigez-le vers la Facturation.`
       });
       return;
     }
-    const updated = { ...disp, medicaments: disp.medicaments.map(m => ({ ...m, dispensed: false })) };
+    const receipt = getPatientPharmaReceipt(disp.patientId);
+    const updated = { ...disp, paye: true, referencePaiement: receipt?.id, medicaments: disp.medicaments.map(m => ({ ...m, dispensed: false })) };
     setSelectedDispensation(updated);
     setVerificationNotes('');
     
@@ -351,16 +352,16 @@ const Pharmacie = () => {
                       </Button>
                       {patientDisp ? (
                         <>
-                          {!patientDisp.paye ? (
-                            <div className="flex flex-col gap-1">
+                          {!isPatientPharmaPaid(p.id) ? (
+                            <div className="flex flex-col gap-1 items-end">
                               <Badge variant="outline" className="text-[9px] justify-center">{patientDisp.totalPrix.toLocaleString()} FCFA</Badge>
-                              <Button size="sm" className="text-xs gap-1 h-7 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleConfirmPharmacyPayment(patientDisp.id)}>
-                                <Banknote className="w-3 h-3" /> Payer
-                              </Button>
+                              <p className="text-[9px] text-destructive text-right">⚠ Diriger vers la caisse</p>
                             </div>
                           ) : (
                             <div className="flex flex-col gap-1">
-                              <Badge variant="outline" className="text-[9px] justify-center border-green-500 text-green-600"><ShieldCheck className="w-3 h-3 mr-0.5" />Payé</Badge>
+                              <Badge variant="outline" className="text-[9px] justify-center border-green-500/50 text-green-600">
+                                <ShieldCheck className="w-3 h-3 mr-0.5" />Reçu ✓
+                              </Badge>
                               <Button size="sm" className="text-xs gap-1 h-7" onClick={() => handleOpenDispense(patientDisp)}>
                                 <ShoppingCart className="w-3 h-3" /> Dispenser
                               </Button>
@@ -433,16 +434,16 @@ const Pharmacie = () => {
                           </div>
                         </div>
                         <div className="flex flex-col gap-1.5">
-                          {!disp.paye ? (
-                            <div className="flex flex-col gap-1">
+                          {!isPatientPharmaPaid(disp.patientId) ? (
+                            <div className="flex flex-col gap-1 items-end">
                               <Badge variant="outline" className="text-[9px] justify-center font-mono">{disp.totalPrix.toLocaleString()} FCFA</Badge>
-                              <Button size="sm" className="h-8 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleConfirmPharmacyPayment(disp.id)}>
-                                <Banknote className="w-3 h-3" /> Confirmer paiement
-                              </Button>
+                              <p className="text-[9px] text-destructive text-right">⚠ Reçu caisse requis</p>
                             </div>
                           ) : (
                             <div className="flex flex-col gap-1">
-                              <Badge variant="outline" className="text-[9px] justify-center border-green-500 text-green-600"><ShieldCheck className="w-3 h-3 mr-0.5" />Payé ✓</Badge>
+                              <Badge variant="outline" className="text-[9px] justify-center border-green-500/50 text-green-600">
+                                <ShieldCheck className="w-3 h-3 mr-0.5" />Reçu: {getPatientPharmaReceipt(disp.patientId)?.id?.substring(0, 12)}...
+                              </Badge>
                               <Button size="sm" className="h-8 text-xs gap-1" onClick={() => handleOpenDispense(disp)}>
                                 <ShoppingCart className="w-3 h-3" /> Dispenser
                               </Button>

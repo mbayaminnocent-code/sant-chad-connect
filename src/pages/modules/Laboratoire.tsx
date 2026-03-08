@@ -67,7 +67,7 @@ interface PendingExam {
 }
 
 const Laboratoire = () => {
-  const { patients, advancePatient, getPatientsByStep, addLabResult } = usePatientJourney();
+  const { patients, advancePatient, getPatientsByStep, addLabResult, hasReceiptForType, getReceiptForType } = usePatientJourney();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('worklist');
 
@@ -217,23 +217,29 @@ const Laboratoire = () => {
     toast.success(`Examen "${catalog.name}" créé pour ${patient.prenom} ${patient.nom}`);
   };
 
-  // Confirm payment for an exam
-  const handleConfirmPayment = (examId: string) => {
-    setPendingExams(prev => prev.map(e => e.id === examId ? { ...e, paye: true, referencePaiement: `REC-${Date.now().toString(36).toUpperCase()}` } : e));
-    toast.success('💰 Paiement confirmé – L\'examen peut être lancé');
+  // Check if patient has a valid receipt from the cashier
+  const isPatientLabPaid = (patientId: string): boolean => {
+    return hasReceiptForType(patientId, 'labo');
+  };
+
+  const getPatientLabReceipt = (patientId: string) => {
+    return getReceiptForType(patientId, 'labo');
   };
 
   // Start processing an exam
   const handleStartExam = (examId: string) => {
     const exam = pendingExams.find(e => e.id === examId);
-    if (exam && !exam.paye) {
-      toast.error('❌ Paiement requis avant de lancer l\'analyse', {
-        description: `Montant: ${exam.prix.toLocaleString()} FCFA – Veuillez confirmer le paiement`
+    if (!exam) return;
+    
+    if (!isPatientLabPaid(exam.patientId)) {
+      toast.error('❌ Reçu de paiement requis', {
+        description: `Le patient doit d'abord payer à la caisse (${exam.prix.toLocaleString()} FCFA). Envoyez-le à la Facturation.`
       });
       return;
     }
+    setPendingExams(prev => prev.map(e => e.id === examId ? { ...e, paye: true, referencePaiement: getPatientLabReceipt(exam.patientId)?.id } : e));
     setPendingExams(prev => prev.map(e => e.id === examId ? { ...e, status: 'in_progress' } : e));
-    toast.info('🧪 Analyse lancée – Prélèvement en cours');
+    toast.info('🧪 Analyse lancée – Reçu vérifié ✓');
   };
 
   // Open results entry dialog
@@ -299,11 +305,11 @@ const Laboratoire = () => {
   };
 
   const getStatusBadge = (exam: PendingExam) => {
-    if (exam.status === 'pending' && !exam.paye) {
-      return <Badge variant="destructive" className="text-[10px] gap-1"><Banknote className="w-3 h-3" />Non payé</Badge>;
+    if (exam.status === 'pending' && !isPatientLabPaid(exam.patientId)) {
+      return <Badge variant="destructive" className="text-[10px] gap-1"><Banknote className="w-3 h-3" />Non payé – Caisse</Badge>;
     }
     switch (exam.status) {
-      case 'pending': return <Badge variant="secondary" className="text-[10px] gap-1"><Clock className="w-3 h-3" />En attente</Badge>;
+      case 'pending': return <Badge variant="secondary" className="text-[10px] gap-1"><Clock className="w-3 h-3" />Payé – En attente</Badge>;
       case 'in_progress': return <Badge className="text-[10px] gap-1 bg-primary animate-pulse"><Beaker className="w-3 h-3" />Analyse en cours</Badge>;
       case 'results_entry': return <Badge variant="outline" className="text-[10px] gap-1 border-warning text-warning"><FileText className="w-3 h-3" />Résultats à valider</Badge>;
       case 'validated': return <Badge variant="outline" className="text-[10px] gap-1 border-secondary text-secondary"><CheckCircle className="w-3 h-3" />Validé – À envoyer</Badge>;
@@ -312,21 +318,24 @@ const Laboratoire = () => {
   };
 
   const getActionButton = (exam: PendingExam) => {
+    const hasPaid = isPatientLabPaid(exam.patientId);
+    const receipt = getPatientLabReceipt(exam.patientId);
+    
     switch (exam.status) {
       case 'pending':
-        if (!exam.paye) {
+        if (!hasPaid) {
           return (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 items-end">
               <Badge variant="outline" className="text-[9px] justify-center">{exam.prix.toLocaleString()} FCFA</Badge>
-              <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleConfirmPayment(exam.id)}>
-                <Banknote className="w-3 h-3" />Confirmer paiement
-              </Button>
+              <p className="text-[9px] text-destructive text-right">⚠ Diriger vers la caisse</p>
             </div>
           );
         }
         return (
           <div className="flex flex-col gap-1">
-            <Badge variant="outline" className="text-[9px] justify-center border-green-500 text-green-600"><ShieldCheck className="w-3 h-3 mr-0.5" />Payé</Badge>
+            <Badge variant="outline" className="text-[9px] justify-center border-green-500/50 text-green-600">
+              <ShieldCheck className="w-3 h-3 mr-0.5" />Reçu: {receipt?.id?.substring(0, 15)}...
+            </Badge>
             <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleStartExam(exam.id)}><Play className="w-3 h-3" />Lancer l'analyse</Button>
           </div>
         );
