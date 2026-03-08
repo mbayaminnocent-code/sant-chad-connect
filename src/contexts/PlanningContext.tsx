@@ -77,11 +77,23 @@ export interface DutyRecord {
 export interface MedicalNotification {
   id: string;
   targetDoctorId: string;
-  type: 'transfert' | 'rdv' | 'garde' | 'info';
+  type: 'transfert' | 'rdv' | 'garde' | 'echange' | 'info';
   message: string;
   detail?: string;
   timestamp: Date;
   read: boolean;
+}
+
+export interface DutyExchange {
+  id: string;
+  requesterId: string;       // staff who wants to swap
+  requesterDutyId: string;   // their duty
+  targetId: string;          // staff they want to swap with
+  targetDutyId: string;      // the other person's duty
+  motif: string;
+  date: string;
+  statut: 'en_attente_cible' | 'accepte_cible' | 'en_attente_chef' | 'valide' | 'refuse';
+  notes?: string;
 }
 
 // ─── Constants ───
