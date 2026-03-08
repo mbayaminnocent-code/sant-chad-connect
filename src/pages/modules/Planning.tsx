@@ -479,21 +479,31 @@ const Planning = () => {
           </h1>
           <p className="text-muted-foreground text-sm">Gestion des rendez-vous, programmation des médecins et transferts de patients</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button size="sm" className="gap-1" onClick={() => setShowNewApptDialog(true)}>
-            <Plus className="w-4 h-4" /> Rendez-vous
-          </Button>
-          <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowNewScheduleDialog(true)}>
-            <Clock className="w-4 h-4" /> Créneau
-          </Button>
+        <div className="flex gap-2 flex-wrap items-center">
+          {isDoctor && !isChefDeService && (
+            <Badge variant="outline" className="gap-1 text-xs"><Lock className="w-3 h-3" /> Lecture seule</Badge>
+          )}
+          {isDoctor && isChefDeService && (
+            <Badge className="bg-primary/10 text-primary text-xs gap-1">👑 Chef de Service – {SERVICES_MAP[myService] || myService}</Badge>
+          )}
+          {canEditPlanning && (
+            <>
+              <Button size="sm" className="gap-1" onClick={() => setShowNewApptDialog(true)}>
+                <Plus className="w-4 h-4" /> Rendez-vous
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowNewScheduleDialog(true)}>
+                <Clock className="w-4 h-4" /> Créneau
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowBreakDialog(true)}>
+                <Coffee className="w-4 h-4" /> Pause
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowDutyDialog(true)}>
+                <Moon className="w-4 h-4" /> Garde
+              </Button>
+            </>
+          )}
           <Button size="sm" variant="secondary" className="gap-1" onClick={() => setShowReferralDialog(true)}>
             <ArrowRightLeft className="w-4 h-4" /> Transférer
-          </Button>
-          <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowBreakDialog(true)}>
-            <Coffee className="w-4 h-4" /> Pause
-          </Button>
-          <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowDutyDialog(true)}>
-            <Moon className="w-4 h-4" /> Garde
           </Button>
         </div>
       </div>
