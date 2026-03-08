@@ -270,32 +270,8 @@ const Services = () => {
                         {/* Journey tracker */}
                         <div className="pl-11 pt-2">
                           <p className="text-[10px] font-medium text-muted-foreground mb-1.5">PARCOURS DU PATIENT</p>
-                          <div className="flex items-center gap-0.5">
-                            {patientJourneySteps.map((step, idx) => {
-                              const currentIdx = patientJourneySteps.indexOf(patient.statut);
-                              const isPast = idx < currentIdx;
-                              const isCurrent = idx === currentIdx;
-                              const isFuture = idx > currentIdx;
-                              return (
-                                <div key={step} className="flex items-center">
-                                  <div className={`flex flex-col items-center`}>
-                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold border-2 transition-all
-                                      ${isCurrent ? 'bg-primary border-primary text-primary-foreground scale-110 shadow-md' : ''}
-                                      ${isPast ? 'bg-secondary border-secondary text-secondary-foreground' : ''}
-                                      ${isFuture ? 'bg-muted border-border text-muted-foreground' : ''}`}>
-                                      {isPast ? '✓' : idx + 1}
-                                    </div>
-                                    <span className={`text-[8px] mt-0.5 whitespace-nowrap ${isCurrent ? 'font-bold text-primary' : 'text-muted-foreground'}`}>
-                                      {journeyLabels[step]}
-                                    </span>
-                                  </div>
-                                  {idx < patientJourneySteps.length - 1 && (
-                                    <div className={`w-4 h-0.5 mx-0.5 mt-[-10px] ${isPast ? 'bg-secondary' : 'bg-border'}`} />
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
+                          <PatientJourneyTracker patientId={patient.id} compact />
+                        </div>
                         </div>
 
                         {/* Recent consultation */}

@@ -6,7 +6,9 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MOCK_PATIENTS, SERVICES } from '@/data/mockData';
+import { SERVICES } from '@/data/mockData';
+import { usePatientJourney } from '@/contexts/PatientJourneyContext';
+import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import { BedDouble, Users, Clock, AlertTriangle, Search, UserCheck, ArrowUpDown, Activity, CalendarDays, FileText, TrendingUp, Eye, ChevronDown, Thermometer } from 'lucide-react';
 import { toast } from 'sonner';
 
