@@ -24,6 +24,7 @@ export const translations = {
     'nav.dashboard_national': 'Dashboard National',
     'nav.surveillance': 'Surveillance Épidémique',
     'nav.statistiques': 'Statistiques SNIS',
+    'nav.espace_medecin': 'Mon Espace',
 
     // TopBar
     'topbar.offline': 'MODE HORS-LIGNE',
