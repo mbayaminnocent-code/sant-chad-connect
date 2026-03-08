@@ -100,6 +100,21 @@ const DOCTORS: Doctor[] = [
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
+// ─── Nurses ───
+const NURSES: StaffMember[] = [
+  { id: 'inf1', nom: 'Fatima Ali', role: 'infirmier', service: 'general' },
+  { id: 'inf2', nom: 'Amina Moussa', role: 'infirmier', service: 'cardio' },
+  { id: 'inf3', nom: 'Haoua Brahim', role: 'infirmier', service: 'pediatrie' },
+  { id: 'inf4', nom: 'Zara Idriss', role: 'infirmier', service: 'chirurgie' },
+  { id: 'inf5', nom: 'Khadija Oumar', role: 'infirmier', service: 'gyneco' },
+  { id: 'inf6', nom: 'Moussa Adam', role: 'infirmier', service: 'reanimation' },
+];
+
+const ALL_STAFF: StaffMember[] = [
+  ...DOCTORS.map(d => ({ id: d.id, nom: d.nom, role: 'medecin' as const, service: d.service })),
+  ...NURSES,
+];
+
 // ─── Initial mock data ───
 const INITIAL_SCHEDULES: ScheduleSlot[] = [
   { id: 'sch1', doctorId: 'doc1', jour: 'Lundi', heureDebut: '08:00', heureFin: '12:00', type: 'consultation', salle: 'Cabinet 1' },
