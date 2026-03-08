@@ -84,6 +84,7 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <AppProvider>
+          <PatientJourneyProvider>
           <BrowserRouter>
             <Routes>
               <Route path="/*" element={<AuthGate />} />
