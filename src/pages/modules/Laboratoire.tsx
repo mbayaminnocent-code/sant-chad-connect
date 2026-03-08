@@ -486,6 +486,28 @@ const Laboratoire = () => {
           )}
         </TabsContent>
 
+        {/* Priority Queue */}
+        <TabsContent value="priority_queue">
+          <PriorityQueue
+            items={worklistExams.map(e => ({
+              id: e.id,
+              patientId: e.patientId,
+              patientName: e.patientName,
+              nhid: e.nhid,
+              urgence: patients.find(p => p.id === e.patientId)?.urgence || 4,
+              examName: e.examName,
+              status: e.status === 'pending' ? 'waiting' as const : 
+                     (e.status === 'in_progress' || e.status === 'results_entry') ? 'in_progress' as const : 'done' as const,
+              arrivalTime: e.createdAt,
+              estimatedDuration: EXAM_DURATIONS[e.examCatalogId] || 20,
+            }))}
+            title="File d'attente Laboratoire"
+            icon={<FlaskConical className="w-4 h-4 text-primary" />}
+            inProgressCount={pendingExams.filter(e => e.status === 'in_progress' || e.status === 'results_entry').length}
+            maxParallel={3}
+          />
+        </TabsContent>
+
         <TabsContent value="completed" className="space-y-3">
           {completedExams.length === 0 ? (
             <Card><CardContent className="p-8 text-center text-muted-foreground">Aucun résultat envoyé au DPI pour le moment.</CardContent></Card>
