@@ -98,7 +98,7 @@ const Laboratoire = () => {
       // Check labResults that are pending (sent from DPI but not yet in worklist)
       p.labResults.forEach((lr, idx) => {
         const examId = `lr-${p.id}-${lr.id}`;
-        if (lr.statut === 'en_cours' && !processedExamIdsRef.current.has(examId)) {
+        if ((lr.statut === 'en_cours' || lr.statut === 'en_attente') && !processedExamIdsRef.current.has(examId)) {
           const catalogMatch = EXAM_CATALOG.find(e => lr.type.toLowerCase().includes(e.name.toLowerCase().substring(0, 5)));
           newExams.push({
             id: examId,
