@@ -474,7 +474,7 @@ const Laboratoire = () => {
                     <p className="font-semibold text-sm text-foreground">{exam.patientName} ({exam.nhid})</p>
                     <p className="text-xs text-primary">{exam.examName} • {exam.category}</p>
                   </div>
-                  {getStatusBadge(exam.status)}
+                  {getStatusBadge(exam)}
                 </div>
                 {Object.keys(exam.results).length > 0 && (
                   <div className="rounded-lg border border-border overflow-hidden">
