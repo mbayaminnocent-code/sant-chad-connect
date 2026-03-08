@@ -9,8 +9,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { usePatientJourney } from '@/contexts/PatientJourneyContext';
 import PatientJourneyTracker from '@/components/PatientJourneyTracker';
-import { FlaskConical, CheckCircle, Clock, Search, Send, Play, FileText, AlertTriangle, Plus, Beaker } from 'lucide-react';
+import { FlaskConical, CheckCircle, Clock, Search, Send, Play, FileText, AlertTriangle, Plus, Beaker, Banknote, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+
+const EXAM_PRICES: Record<string, number> = {
+  'nfs': 8000, 'ge': 5000, 'glycemie': 3000, 'creat': 10000,
+  'bilan_hep': 15000, 'troponine': 20000, 'hba1c': 8000,
+  'proteinurie': 6000, 'hemoculture': 12000, 'bk': 10000,
+  'ionogramme': 12000, 'pcr_meningo': 25000,
+};
 
 const EXAM_CATALOG = [
   { id: 'nfs', name: 'NFS Complète', category: 'Hématologie', params: ['Hémoglobine', 'Globules blancs', 'Plaquettes', 'Hématocrite'] },
