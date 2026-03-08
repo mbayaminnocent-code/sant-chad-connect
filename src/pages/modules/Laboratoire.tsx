@@ -548,6 +548,7 @@ const Laboratoire = () => {
           />
         </TabsContent>
 
+        <TabsContent value="completed" className="space-y-3">
           {completedExams.length === 0 ? (
             <Card><CardContent className="p-8 text-center text-muted-foreground">Aucun résultat envoyé au DPI pour le moment.</CardContent></Card>
           ) : completedExams.map(exam => (
