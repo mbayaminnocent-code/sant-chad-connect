@@ -268,6 +268,102 @@ export const PlanningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return hasOperationSchedule || hasOperationAppointment || hasBlocDuty;
   }, [schedules, appointments, duties]);
 
+  // ─── Duty Exchange ───
+  const [dutyExchanges, setDutyExchanges] = useState<DutyExchange[]>([
+    {
+      id: 'exch-init-1',
+      requesterId: 'doc1',
+      requesterDutyId: 'grd1',
+      targetId: 'doc4',
+      targetDutyId: 'grd5',
+      motif: 'Obligation familiale le 08/03',
+      date: '2026-03-08',
+      statut: 'en_attente_cible',
+    },
+  ]);
+
+  const requestDutyExchange = useCallback((exchange: Omit<DutyExchange, 'id' | 'date' | 'statut'>) => {
+    const newExchange: DutyExchange = {
+      ...exchange,
+      id: `exch-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      statut: 'en_attente_cible',
+    };
+    setDutyExchanges(prev => [newExchange, ...prev]);
+    const requester = ALL_STAFF.find(s => s.id === exchange.requesterId);
+    const requesterDuty = duties.find(d => d.id === exchange.requesterDutyId);
+    addMedicalNotification({
+      targetDoctorId: exchange.targetId,
+      type: 'echange',
+      message: 'Demande d\'échange de garde',
+      detail: `${requester?.nom} souhaite échanger sa garde du ${requesterDuty?.date} avec vous. Motif: ${exchange.motif}`,
+    });
+  }, [duties, addMedicalNotification]);
+
+  const respondToExchange = useCallback((exchangeId: string, accept: boolean) => {
+    setDutyExchanges(prev => prev.map(e => {
+      if (e.id !== exchangeId) return e;
+      if (accept) {
+        // Find chef de service for this service
+        const duty = duties.find(d => d.id === e.requesterDutyId);
+        const service = duty?.service || '';
+        // Notify all chefs de service (doctors who are chefs)
+        DOCTORS.forEach(doc => {
+          addMedicalNotification({
+            targetDoctorId: doc.id,
+            type: 'echange',
+            message: 'Échange de garde à valider',
+            detail: `${ALL_STAFF.find(s => s.id === e.requesterId)?.nom} ↔ ${ALL_STAFF.find(s => s.id === e.targetId)?.nom} – ${service}`,
+          });
+        });
+        return { ...e, statut: 'en_attente_chef' as const };
+      }
+      // Notify requester of refusal
+      addMedicalNotification({
+        targetDoctorId: e.requesterId,
+        type: 'echange',
+        message: 'Échange de garde refusé',
+        detail: `${ALL_STAFF.find(s => s.id === e.targetId)?.nom} a refusé votre demande d'échange`,
+      });
+      return { ...e, statut: 'refuse' as const };
+    }));
+  }, [duties, addMedicalNotification]);
+
+  const validateExchange = useCallback((exchangeId: string, approve: boolean) => {
+    setDutyExchanges(prev => prev.map(e => {
+      if (e.id !== exchangeId) return e;
+      if (approve) {
+        // Actually swap the duties
+        setDuties(prevDuties => prevDuties.map(d => {
+          if (d.id === e.requesterDutyId) return { ...d, staffId: e.targetId };
+          if (d.id === e.targetDutyId) return { ...d, staffId: e.requesterId };
+          return d;
+        }));
+        // Notify both parties
+        [e.requesterId, e.targetId].forEach(id => {
+          addMedicalNotification({
+            targetDoctorId: id,
+            type: 'echange',
+            message: 'Échange de garde validé ✅',
+            detail: 'Le chef de service a approuvé l\'échange. Vos gardes ont été mises à jour.',
+          });
+        });
+        toast.success('Échange de garde validé – Gardes mises à jour');
+        return { ...e, statut: 'valide' as const };
+      }
+      // Notify both parties of rejection
+      [e.requesterId, e.targetId].forEach(id => {
+        addMedicalNotification({
+          targetDoctorId: id,
+          type: 'echange',
+          message: 'Échange de garde refusé par le chef',
+          detail: 'Le chef de service n\'a pas approuvé cet échange.',
+        });
+      });
+      return { ...e, statut: 'refuse' as const };
+    }));
+  }, [addMedicalNotification]);
+
   return (
     <PlanningContext.Provider value={{
       schedules, setSchedules,
@@ -275,6 +371,7 @@ export const PlanningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       referrals, setReferrals,
       breaks, setBreaks,
       duties, setDuties,
+      dutyExchanges, requestDutyExchange, respondToExchange, validateExchange,
       medicalNotifications, addMedicalNotification,
       markNotificationRead, markAllNotificationsRead,
       getNotificationsForDoctor, isDoctorScheduledForBloc,
