@@ -478,7 +478,13 @@ const Planning = () => {
             <Clock className="w-4 h-4" /> Créneau
           </Button>
           <Button size="sm" variant="secondary" className="gap-1" onClick={() => setShowReferralDialog(true)}>
-            <ArrowRightLeft className="w-4 h-4" /> Transférer patient
+            <ArrowRightLeft className="w-4 h-4" /> Transférer
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowBreakDialog(true)}>
+            <Coffee className="w-4 h-4" /> Pause
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowDutyDialog(true)}>
+            <Moon className="w-4 h-4" /> Garde
           </Button>
         </div>
       </div>
