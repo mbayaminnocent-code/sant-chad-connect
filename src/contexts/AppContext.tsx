@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface AppContextType {
   isOffline: boolean;
@@ -40,6 +40,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     { id: '3', type: 'success', message: 'Synchronisation Starlink réussie – 147 dossiers', time: '07:45' },
   ]);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Apply RTL direction and lang attribute when language changes
+  useEffect(() => {
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = language;
+  }, [language]);
 
   const addNotification = (n: Omit<Notification, 'id' | 'time'>) => {
     const now = new Date();
