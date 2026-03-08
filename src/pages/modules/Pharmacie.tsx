@@ -35,12 +35,15 @@ interface DispensationRecord {
   patientName: string;
   nhid: string;
   prescriptionId: string;
-  medicaments: { nom: string; dosage: string; frequence: string; duree: string; dispensed: boolean; lotNumber?: string }[];
+  medicaments: { nom: string; dosage: string; frequence: string; duree: string; dispensed: boolean; lotNumber?: string; prix?: number }[];
   status: 'pending' | 'in_progress' | 'dispensed' | 'rejected';
   timestamp: Date;
   pharmacist?: string;
   verificationNotes?: string;
   rejectionReason?: string;
+  paye: boolean;
+  totalPrix: number;
+  referencePaiement?: string;
 }
 
 interface StockMovement {
