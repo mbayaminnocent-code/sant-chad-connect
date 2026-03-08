@@ -1023,6 +1023,122 @@ const Planning = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Break Dialog ─── */}
+      <Dialog open={showBreakDialog} onOpenChange={setShowBreakDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Ajouter une pause</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Personnel *</label>
+              <Select value={brkStaffId} onValueChange={setBrkStaffId}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                <SelectContent>
+                  {ALL_STAFF.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.role === 'medecin' ? '🩺' : '💉'} {s.nom}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Jour *</label>
+              <Select value={brkJour} onValueChange={setBrkJour}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                <SelectContent>
+                  {JOURS.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Début *</label>
+                <Input type="time" value={brkDebut} onChange={e => setBrkDebut(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Fin *</label>
+                <Input type="time" value={brkFin} onChange={e => setBrkFin(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Type de pause</label>
+              <Select value={brkType} onValueChange={v => setBrkType(v as BreakRecord['type'])}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dejeuner">🍽️ Déjeuner</SelectItem>
+                  <SelectItem value="pause_courte">☕ Pause courte (15 min)</SelectItem>
+                  <SelectItem value="pause_longue">🛋️ Pause longue</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBreakDialog(false)}>Annuler</Button>
+            <Button onClick={handleCreateBreak}>Ajouter la pause</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Duty Dialog ─── */}
+      <Dialog open={showDutyDialog} onOpenChange={setShowDutyDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Ajouter une garde / permanence</DialogTitle></DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Personnel *</label>
+              <Select value={dutyStaffId} onValueChange={setDutyStaffId}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                <SelectContent>
+                  {ALL_STAFF.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.role === 'medecin' ? '🩺' : '💉'} {s.nom}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Date *</label>
+              <Input type="date" value={dutyDate} onChange={e => setDutyDate(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Début *</label>
+                <Input type="time" value={dutyDebut} onChange={e => setDutyDebut(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Fin *</label>
+                <Input type="time" value={dutyFin} onChange={e => setDutyFin(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Type *</label>
+              <Select value={dutyType} onValueChange={v => setDutyType(v as DutyRecord['type'])}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="garde_jour">☀️ Garde de jour</SelectItem>
+                  <SelectItem value="garde_nuit">🌙 Garde de nuit</SelectItem>
+                  <SelectItem value="permanence">🏥 Permanence</SelectItem>
+                  <SelectItem value="astreinte">📱 Astreinte</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Service *</label>
+              <Input value={dutyService} onChange={e => setDutyService(e.target.value)} placeholder="Ex: Cardiologie, Urgences..." />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Notes</label>
+              <Textarea value={dutyNotes} onChange={e => setDutyNotes(e.target.value)} placeholder="Instructions particulières..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDutyDialog(false)}>Annuler</Button>
+            <Button onClick={handleCreateDuty}>Ajouter la garde</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
