@@ -26,6 +26,7 @@ const Planning = () => {
     referrals, setReferrals,
     breaks, setBreaks,
     duties, setDuties,
+    dutyExchanges, requestDutyExchange, respondToExchange, validateExchange,
     addMedicalNotification,
   } = usePlanning();
 
