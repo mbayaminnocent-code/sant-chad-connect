@@ -12,6 +12,8 @@ import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import { FlaskConical, CheckCircle, Clock, Search, Send, Play, FileText, AlertTriangle, Plus, Beaker, Banknote, ShieldCheck, ListOrdered } from 'lucide-react';
 import { toast } from 'sonner';
 import PriorityQueue from '@/components/PriorityQueue';
+import WaitTimeAlerts from '@/components/WaitTimeAlerts';
+import ServiceDashboard from '@/components/ServiceDashboard';
 
 const EXAM_PRICES: Record<string, number> = {
   'nfs': 8000, 'ge': 5000, 'glycemie': 3000, 'creat': 10000,
