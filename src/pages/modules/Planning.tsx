@@ -872,6 +872,103 @@ const Planning = () => {
           )}
         </TabsContent>
 
+        {/* ─── Échanges de gardes Tab ─── */}
+        <TabsContent value="echanges" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Demandes d'échange de gardes entre personnel – Validation par le chef de service</p>
+            <Button size="sm" className="gap-1" onClick={() => setShowExchangeDialog(true)}>
+              <Plus className="w-4 h-4" /> Demander un échange
+            </Button>
+          </div>
+
+          {dutyExchanges.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-muted-foreground">Aucune demande d'échange</CardContent></Card>
+          ) : dutyExchanges.map(exch => {
+            const requester = ALL_STAFF.find(s => s.id === exch.requesterId);
+            const target = ALL_STAFF.find(s => s.id === exch.targetId);
+            const requesterDuty = duties.find(d => d.id === exch.requesterDutyId);
+            const targetDuty = duties.find(d => d.id === exch.targetDutyId);
+
+            const statusConfig: Record<string, { label: string; style: string }> = {
+              en_attente_cible: { label: '⏳ En attente de réponse', style: 'bg-primary/10 text-primary' },
+              accepte_cible: { label: '👤 Accepté par le collègue', style: 'bg-accent text-accent-foreground' },
+              en_attente_chef: { label: '👑 En attente du chef', style: 'bg-warning/10 text-warning' },
+              valide: { label: '✅ Validé', style: 'bg-secondary/10 text-secondary' },
+              refuse: { label: '❌ Refusé', style: 'bg-destructive/10 text-destructive' },
+            };
+            const status = statusConfig[exch.statut];
+
+            // Can the current user act on this?
+            const canRespondAsTarget = exch.statut === 'en_attente_cible' && exch.targetId === myDoctorId;
+            const canValidateAsChef = exch.statut === 'en_attente_chef' && isChefDeService;
+
+            return (
+              <Card key={exch.id} className={`border-l-4 ${
+                exch.statut === 'valide' ? 'border-l-secondary' :
+                exch.statut === 'refuse' ? 'border-l-destructive' :
+                exch.statut === 'en_attente_chef' ? 'border-l-warning' :
+                'border-l-primary'
+              }`}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <Repeat className="w-4 h-4 text-primary" />
+                        Échange de garde
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="p-2 rounded bg-primary/5 border border-primary/10 space-y-1">
+                          <p className="text-xs font-semibold text-foreground">{requester?.nom}</p>
+                          {requesterDuty ? (
+                            <>
+                              <p className="text-[11px] text-muted-foreground">📅 {requesterDuty.date} • {requesterDuty.heureDebut}–{requesterDuty.heureFin}</p>
+                              <p className="text-[11px] text-muted-foreground">🏥 {requesterDuty.service} • {requesterDuty.type.replace('_', ' ')}</p>
+                            </>
+                          ) : <p className="text-[11px] text-muted-foreground">Garde supprimée</p>}
+                        </div>
+                        <div className="p-2 rounded bg-accent/30 border border-accent/20 space-y-1">
+                          <p className="text-xs font-semibold text-foreground">{target?.nom}</p>
+                          {targetDuty ? (
+                            <>
+                              <p className="text-[11px] text-muted-foreground">📅 {targetDuty.date} • {targetDuty.heureDebut}–{targetDuty.heureFin}</p>
+                              <p className="text-[11px] text-muted-foreground">🏥 {targetDuty.service} • {targetDuty.type.replace('_', ' ')}</p>
+                            </>
+                          ) : <p className="text-[11px] text-muted-foreground">Garde supprimée</p>}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">💬 Motif: {exch.motif}</p>
+                      <p className="text-[10px] text-muted-foreground">📅 Demandé le {exch.date}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge className={`text-[10px] ${status.style}`}>{status.label}</Badge>
+                      {canRespondAsTarget && (
+                        <div className="flex gap-1">
+                          <Button size="sm" className="text-[10px] h-7 gap-1" onClick={() => respondToExchange(exch.id, true)}>
+                            ✅ Accepter
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-[10px] h-7 text-destructive" onClick={() => respondToExchange(exch.id, false)}>
+                            Refuser
+                          </Button>
+                        </div>
+                      )}
+                      {canValidateAsChef && (
+                        <div className="flex gap-1">
+                          <Button size="sm" className="text-[10px] h-7 gap-1 bg-secondary hover:bg-secondary/90" onClick={() => validateExchange(exch.id, true)}>
+                            👑 Valider
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-[10px] h-7 text-destructive" onClick={() => validateExchange(exch.id, false)}>
+                            Rejeter
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </TabsContent>
+
         {/* ─── Transferts Tab ─── */}
         <TabsContent value="transferts" className="space-y-4">
           {referrals.length === 0 ? (
