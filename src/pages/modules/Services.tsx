@@ -47,10 +47,10 @@ const Services = () => {
     };
   };
 
-  const totalPatients = MOCK_PATIENTS.length;
-  const totalHospitalises = MOCK_PATIENTS.filter(p => p.statut === 'hospitalise').length;
-  const totalConsultations = MOCK_PATIENTS.filter(p => p.statut === 'consultation').length;
-  const totalUrgents = MOCK_PATIENTS.filter(p => p.urgence <= 2).length;
+  const totalPatients = patients.length;
+  const totalHospitalises = patients.filter(p => p.statut === 'hospitalise').length;
+  const totalConsultations = patients.filter(p => p.statut === 'consultation').length;
+  const totalUrgents = patients.filter(p => p.urgence <= 2).length;
 
   const selectedServiceData = selectedService ? SERVICES.find(s => s.id === selectedService) : null;
   const selectedPatients = selectedService ? getServicePatients(selectedService) : [];
