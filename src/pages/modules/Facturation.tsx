@@ -52,6 +52,22 @@ const getExamPrice = (examName: string): number => {
   return key ? (EXAM_PRICES[key] || 8000) : 8000;
 };
 
+const IMAGERIE_PRICES: Record<string, number> = {
+  'Radiographie thoracique': 15000, 'Radiographie osseuse': 12000,
+  'Échographie abdominale': 20000, 'Échographie obstétricale': 18000,
+  'Échocardiographie': 30000, 'Scanner cérébral': 50000,
+  'Scanner thoracique': 45000, 'Scanner abdominal': 45000,
+  'IRM cérébrale': 80000, 'IRM rachidienne': 75000,
+  'Mammographie': 25000, 'Doppler vasculaire': 25000, 'Angiographie': 60000,
+};
+
+const getImageriePrice = (examName: string): number => {
+  const key = Object.keys(IMAGERIE_PRICES).find(k =>
+    examName.toLowerCase().includes(k.toLowerCase().substring(0, 8))
+  );
+  return key ? IMAGERIE_PRICES[key] : 20000;
+};
+
 const CONSULTATION_TARIFS: Record<string, { label: string; montant: number }> = {
   consultation: { label: 'Consultation générale', montant: 5000 },
   consultation_spe: { label: 'Consultation spécialiste', montant: 15000 },
