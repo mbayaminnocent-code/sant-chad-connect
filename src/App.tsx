@@ -67,6 +67,9 @@ const AppLayout = () => {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar />
+          <div className="px-2 pt-2">
+            <WaitEscalationMonitor />
+          </div>
           <main className="flex-1 overflow-auto">
             <Routes>
               <Route path="/" element={
