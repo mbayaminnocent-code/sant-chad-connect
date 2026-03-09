@@ -105,15 +105,27 @@ const Facturation = () => {
   const patientsWithPendingBills = useMemo(() => {
     return patients.filter(p => {
       const step = getPatientStep(p.id);
-      // Patients at accueil/paiement (initial visit)
+      // Patients at accueil/paiement (initial visit or waiting to pay for imaging)
       if (step === 'accueil' || step === 'paiement') return true;
       // Patients with unpaid lab exams
       const hasUnpaidExams = p.consultations.some(c => c.examens.length > 0) && !hasReceiptForType(p.id, 'labo');
       // Patients with unpaid prescriptions
       const hasUnpaidMeds = p.prescriptions.some(pr => pr.statut === 'en_attente') && !hasReceiptForType(p.id, 'pharmacie');
-      return hasUnpaidExams || hasUnpaidMeds;
+      // Patients with unpaid imaging
+      const hasUnpaidImaging = p.imagingResults.some(r => r.statut === 'en_attente') && !hasReceiptForType(p.id, 'imagerie');
+      return hasUnpaidExams || hasUnpaidMeds || hasUnpaidImaging;
     });
   }, [patients, getPatientStep, hasReceiptForType]);
+
+  // Detect patients sent to paiement for imaging (from journey events)
+  const patientsWaitingForImagingPayment = useMemo(() => {
+    return patients.filter(p => {
+      const step = getPatientStep(p.id);
+      if (step !== 'paiement') return false;
+      const events = getPatientEvents(p.id);
+      return events.some(e => e.to === 'paiement' && e.details?.includes('imagerie'));
+    });
+  }, [patients, getPatientStep, getPatientEvents]);
 
   const filteredPatients = useMemo(() => {
     const source = searchQuery.trim() ? patients : patientsWithPendingBills;
