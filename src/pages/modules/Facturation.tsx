@@ -12,7 +12,7 @@ import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import {
   Banknote, Receipt, QrCode, CheckCircle, TrendingUp, Search, User,
   Printer, X, Clock, Smartphone, Building2, FlaskConical, Pill,
-  FileText, Eye, ShieldCheck, AlertTriangle
+  FileText, Eye, ShieldCheck, AlertTriangle, ScanLine
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -52,6 +52,22 @@ const getExamPrice = (examName: string): number => {
   return key ? (EXAM_PRICES[key] || 8000) : 8000;
 };
 
+const IMAGERIE_PRICES: Record<string, number> = {
+  'Radiographie thoracique': 15000, 'Radiographie osseuse': 12000,
+  'Échographie abdominale': 20000, 'Échographie obstétricale': 18000,
+  'Échocardiographie': 30000, 'Scanner cérébral': 50000,
+  'Scanner thoracique': 45000, 'Scanner abdominal': 45000,
+  'IRM cérébrale': 80000, 'IRM rachidienne': 75000,
+  'Mammographie': 25000, 'Doppler vasculaire': 25000, 'Angiographie': 60000,
+};
+
+const getImageriePrice = (examName: string): number => {
+  const key = Object.keys(IMAGERIE_PRICES).find(k =>
+    examName.toLowerCase().includes(k.toLowerCase().substring(0, 8))
+  );
+  return key ? IMAGERIE_PRICES[key] : 20000;
+};
+
 const CONSULTATION_TARIFS: Record<string, { label: string; montant: number }> = {
   consultation: { label: 'Consultation générale', montant: 5000 },
   consultation_spe: { label: 'Consultation spécialiste', montant: 15000 },
@@ -70,7 +86,7 @@ interface BillableItem {
 const Facturation = () => {
   const {
     patients, advancePatient, getPatientsByStep, getPatientStep,
-    addPaymentReceipt, paymentReceipts, hasReceiptForType
+    addPaymentReceipt, paymentReceipts, hasReceiptForType, getPatientEvents
   } = usePatientJourney();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -89,15 +105,27 @@ const Facturation = () => {
   const patientsWithPendingBills = useMemo(() => {
     return patients.filter(p => {
       const step = getPatientStep(p.id);
-      // Patients at accueil/paiement (initial visit)
+      // Patients at accueil/paiement (initial visit or waiting to pay for imaging)
       if (step === 'accueil' || step === 'paiement') return true;
       // Patients with unpaid lab exams
       const hasUnpaidExams = p.consultations.some(c => c.examens.length > 0) && !hasReceiptForType(p.id, 'labo');
       // Patients with unpaid prescriptions
       const hasUnpaidMeds = p.prescriptions.some(pr => pr.statut === 'en_attente') && !hasReceiptForType(p.id, 'pharmacie');
-      return hasUnpaidExams || hasUnpaidMeds;
+      // Patients with unpaid imaging
+      const hasUnpaidImaging = p.imagingResults.some(r => r.statut === 'en_attente') && !hasReceiptForType(p.id, 'imagerie');
+      return hasUnpaidExams || hasUnpaidMeds || hasUnpaidImaging;
     });
   }, [patients, getPatientStep, hasReceiptForType]);
+
+  // Detect patients sent to paiement for imaging (from journey events)
+  const patientsWaitingForImagingPayment = useMemo(() => {
+    return patients.filter(p => {
+      const step = getPatientStep(p.id);
+      if (step !== 'paiement') return false;
+      const events = getPatientEvents(p.id);
+      return events.some(e => e.to === 'paiement' && e.details?.includes('imagerie'));
+    });
+  }, [patients, getPatientStep, getPatientEvents]);
 
   const filteredPatients = useMemo(() => {
     const source = searchQuery.trim() ? patients : patientsWithPendingBills;
@@ -123,9 +151,11 @@ const Facturation = () => {
 
     const items: BillableItem[] = [];
     const step = getPatientStep(patientId);
+    const events = getPatientEvents(patientId);
+    const isWaitingForImagingPayment = step === 'paiement' && events.some(e => e.to === 'paiement' && e.details?.toLowerCase().includes('imagerie'));
 
-    // Consultation items for initial visit
-    if (step === 'accueil' || step === 'paiement') {
+    // Consultation items for initial visit (not imaging payment)
+    if ((step === 'accueil' || step === 'paiement') && !isWaitingForImagingPayment) {
       items.push({
         id: 'consult-base',
         label: 'Consultation générale',
@@ -133,6 +163,25 @@ const Facturation = () => {
         type: 'consultation',
         selected: true,
       });
+    }
+
+    // Imaging exams from journey events (patient sent to paiement for imaging)
+    if (!hasReceiptForType(patientId, 'imagerie')) {
+      const imagingEvent = events.find(e => e.to === 'paiement' && e.details?.toLowerCase().includes('imagerie'));
+      if (imagingEvent && imagingEvent.details) {
+        // Extract exam names from details like "💰 Payer avant imagerie: Scanner cérébral, IRM cérébrale"
+        const detailStr = imagingEvent.details.replace(/.*imagerie:\s*/i, '').replace(/.*Imagerie:\s*/i, '');
+        const examNames = detailStr.split(',').map(s => s.trim()).filter(Boolean);
+        examNames.forEach((examName, idx) => {
+          items.push({
+            id: `img-${patientId}-${idx}`,
+            label: `📷 ${examName}`,
+            montant: getImageriePrice(examName),
+            type: 'imagerie',
+            selected: true,
+          });
+        });
+      }
     }
 
     // Lab exams from consultations
@@ -198,6 +247,7 @@ const Facturation = () => {
 
   const hasLabItems = selectedItems.some(i => i.type === 'labo');
   const hasPharmaItems = selectedItems.some(i => i.type === 'pharmacie');
+  const hasImagingItems = selectedItems.some(i => i.type === 'imagerie');
 
   const handleValidatePayment = () => {
     if (!selectedPatient || totalMontant <= 0) {
@@ -260,8 +310,12 @@ const Facturation = () => {
 
     setShowReceipt(combinedReceipt);
 
-    // Advance patient if at accueil
-    if (step === 'accueil' || step === 'paiement') {
+    // Advance patient based on payment context
+    const hasImagingItems = selectedItems.some(i => i.type === 'imagerie');
+    if (hasImagingItems && (step === 'paiement')) {
+      // Patient paid for imaging → send to imagerie
+      advancePatient(selectedPatient.id, 'imagerie', 'Facturation', `✅ Paiement imagerie ${montantAPayer.toLocaleString()} FCFA – ${modeLabel}`);
+    } else if (step === 'accueil' || step === 'paiement') {
       advancePatient(selectedPatient.id, 'triage', 'Facturation', `Paiement ${montantAPayer.toLocaleString()} FCFA – ${modeLabel}`);
     } else {
       toast.success(`💰 Paiement enregistré pour ${selectedPatient.prenom} ${selectedPatient.nom}`, {
@@ -347,7 +401,7 @@ const Facturation = () => {
               </div>
               <div className="text-center border-t border-dashed border-border pt-2">
                 <p className="text-[10px] text-muted-foreground">═══════════════════════════</p>
-                <p className="text-[10px] text-primary font-bold">📋 Présentez ce reçu au Laboratoire / Pharmacie</p>
+                <p className="text-[10px] text-primary font-bold">📋 Présentez ce reçu au Laboratoire / Imagerie / Pharmacie</p>
                 <p className="text-[10px] text-muted-foreground">Référence: {showReceipt.id}</p>
                 <p className="text-[10px] text-muted-foreground">Reçu non-falsifiable – Marate Santé AI</p>
               </div>
@@ -422,12 +476,15 @@ const Facturation = () => {
                     const isAtAccueil = step === 'accueil' || step === 'paiement';
                     const hasUnpaidExams = p.consultations.some(c => c.examens.length > 0) && !hasReceiptForType(p.id, 'labo');
                     const hasUnpaidMeds = p.prescriptions.some(pr => pr.statut === 'en_attente') && !hasReceiptForType(p.id, 'pharmacie');
+                    const evts = getPatientEvents(p.id);
+                    const isWaitingImagingPay = step === 'paiement' && evts.some(e => e.to === 'paiement' && e.details?.toLowerCase().includes('imagerie'));
 
                     return (
                       <div
                         key={p.id}
                         className={`p-3 rounded-lg border cursor-pointer transition-all ${
                           isSelected ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                          : isWaitingImagingPay ? 'border-warning bg-warning/5 hover:border-warning/50'
                           : 'border-border hover:border-primary/30 hover:bg-muted/30'
                         }`}
                         onClick={() => selectPatient(p.id)}
@@ -438,7 +495,8 @@ const Facturation = () => {
                             <p className="text-xs text-muted-foreground">{p.nhid}</p>
                           </div>
                           <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
-                            {isAtAccueil && <Badge variant="outline" className="text-[9px] border-warning/50 text-warning">Consultation</Badge>}
+                            {isWaitingImagingPay && <Badge variant="outline" className="text-[9px] border-warning/50 text-warning gap-0.5"><ScanLine className="w-2.5 h-2.5" />Imagerie 💰</Badge>}
+                            {isAtAccueil && !isWaitingImagingPay && <Badge variant="outline" className="text-[9px] border-warning/50 text-warning">Consultation</Badge>}
                             {hasUnpaidExams && <Badge variant="outline" className="text-[9px] border-primary/50 text-primary gap-0.5"><FlaskConical className="w-2.5 h-2.5" />Labo</Badge>}
                             {hasUnpaidMeds && <Badge variant="outline" className="text-[9px] border-primary/50 text-primary gap-0.5"><Pill className="w-2.5 h-2.5" />Pharma</Badge>}
                             {isSelected && <CheckCircle className="w-4 h-4 text-primary" />}
@@ -577,6 +635,12 @@ const Facturation = () => {
                         <div className="flex justify-between text-foreground">
                           <span className="flex items-center gap-1"><FlaskConical className="w-3 h-3 text-primary" /> Examens labo</span>
                           <span className="font-medium">{selectedItems.filter(i => i.type === 'labo').reduce((s, i) => s + i.montant, 0).toLocaleString()} F</span>
+                        </div>
+                      )}
+                      {hasImagingItems && (
+                        <div className="flex justify-between text-foreground">
+                          <span className="flex items-center gap-1"><ScanLine className="w-3 h-3 text-primary" /> Imagerie médicale</span>
+                          <span className="font-medium">{selectedItems.filter(i => i.type === 'imagerie').reduce((s, i) => s + i.montant, 0).toLocaleString()} F</span>
                         </div>
                       )}
                       {hasPharmaItems && (

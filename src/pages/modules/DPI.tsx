@@ -196,9 +196,13 @@ const DPI = () => {
       toast.error('Sélectionnez au moins un examen d\'imagerie');
       return;
     }
-    advancePatient(selectedPatientId, 'imagerie', 'DPI – Consultation', `Imagerie: ${selectedImagingExams.join(', ')}`);
+    // Patient must go to cashier first before imaging
+    advancePatient(selectedPatientId, 'paiement', 'DPI – Consultation', `💰 Payer avant imagerie: ${selectedImagingExams.join(', ')}`);
     setSelectedImagingExams([]);
-    toast.success(`📷 ${selectedImagingExams.length} examen(s) envoyé(s) en imagerie`);
+    toast.success(`📷 ${selectedImagingExams.length} examen(s) prescrit(s) – Patient dirigé vers la caisse`, {
+      description: '💰 Le patient doit payer à la caisse avant de se rendre en imagerie',
+      duration: 5000,
+    });
   };
 
   const handleSendToPharmacy = () => {

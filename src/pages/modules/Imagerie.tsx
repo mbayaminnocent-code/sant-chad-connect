@@ -60,7 +60,7 @@ interface ImagingRequest {
 const Imagerie = () => {
   const {
     patients, advancePatient, getPatientsByStep, getPatientEvents,
-    addImagingResult, updateImagingResult
+    addImagingResult, updateImagingResult, hasReceiptForType, getReceiptForType
   } = usePatientJourney();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -180,6 +180,14 @@ const Imagerie = () => {
   }
 
   const handleStartExam = (req: ImagingRequest) => {
+    // Check for payment receipt before starting
+    if (!hasReceiptForType(req.patientId, 'imagerie')) {
+      toast.error(`⚠️ Reçu de paiement requis pour ${req.patientName}`, {
+        description: '💰 Le patient doit d\'abord payer à la caisse et présenter son reçu avant de procéder à l\'examen.',
+        duration: 6000,
+      });
+      return;
+    }
     setLocalRequests(prev => {
       const exists = prev.find(r => r.id === req.id);
       if (exists) {
@@ -195,7 +203,10 @@ const Imagerie = () => {
       interpretation: '',
       statut: 'en_cours',
     });
-    toast.success(`Examen démarré pour ${req.patientName}`);
+    const receipt = getReceiptForType(req.patientId, 'imagerie');
+    toast.success(`Examen démarré pour ${req.patientName}`, {
+      description: `✅ Reçu vérifié: ${receipt?.id}`,
+    });
   };
 
   const handleOpenInterpretation = (req: ImagingRequest) => {
@@ -319,6 +330,8 @@ const Imagerie = () => {
               const patientRequests = allRequests.filter(r => r.patientId === p.id);
               const hasActiveExam = patientRequests.some(r => r.statut === 'en_cours');
               const allDone = patientRequests.length > 0 && patientRequests.every(r => r.statut === 'termine');
+              const hasPaid = hasReceiptForType(p.id, 'imagerie');
+              const receipt = getReceiptForType(p.id, 'imagerie');
 
               return (
                 <div key={p.id} className="p-4 rounded-xl border border-border bg-card space-y-3 hover:border-primary/30 transition-colors">
@@ -336,6 +349,15 @@ const Imagerie = () => {
                           <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${urgenceColor(p.urgence)}`}>
                             {p.urgence <= 2 ? '⚡ Urgent' : p.urgence === 3 ? '🔶 Modéré' : '🟢 Normal'}
                           </Badge>
+                          {hasPaid ? (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-secondary/50 text-secondary bg-secondary/5 gap-0.5">
+                              <CheckCircle className="w-2.5 h-2.5" /> Reçu ✅ {receipt?.id}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-destructive/50 text-destructive bg-destructive/5 gap-0.5">
+                              <AlertTriangle className="w-2.5 h-2.5" /> Non payé ⚠️
+                            </Badge>
+                          )}
                           {patientRequests.length > 0 && (
                             <span className="text-[10px] text-muted-foreground">
                               · {patientRequests.length} examen{patientRequests.length > 1 ? 's' : ''}
