@@ -12,7 +12,7 @@ import PatientJourneyTracker from '@/components/PatientJourneyTracker';
 import {
   Banknote, Receipt, QrCode, CheckCircle, TrendingUp, Search, User,
   Printer, X, Clock, Smartphone, Building2, FlaskConical, Pill,
-  FileText, Eye, ShieldCheck, AlertTriangle
+  FileText, Eye, ShieldCheck, AlertTriangle, ScanLine
 } from 'lucide-react';
 import { toast } from 'sonner';
 
