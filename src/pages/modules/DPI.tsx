@@ -186,9 +186,13 @@ const DPI = () => {
         resultats: [],
       });
     });
-    advancePatient(selectedPatientId, 'labo', 'DPI – Consultation', `Examens: ${selectedLabExams.join(', ')}`);
+    // Patient must go to cashier first before lab
+    advancePatient(selectedPatientId, 'paiement', 'DPI – Consultation', `💰 Payer avant labo: ${selectedLabExams.join(', ')}`);
     setSelectedLabExams([]);
-    toast.success(`🔬 ${selectedLabExams.length} examen(s) envoyé(s) au laboratoire`);
+    toast.success(`🔬 ${selectedLabExams.length} examen(s) prescrit(s) – Patient dirigé vers la caisse`, {
+      description: '💰 Le patient doit payer à la caisse avant de se rendre au laboratoire',
+      duration: 5000,
+    });
   };
 
   const handleSendToImaging = () => {

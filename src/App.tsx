@@ -28,6 +28,7 @@ import PatientsList from "@/pages/modules/PatientsList";
 import MinistryDashboard from "@/pages/modules/MinistryDashboard";
 import DirectorDashboard from "@/pages/modules/DirectorDashboard";
 import EspaceMedecin from "@/pages/modules/EspaceMedecin";
+import WaitEscalationMonitor from "@/components/WaitEscalationMonitor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,9 @@ const AppLayout = () => {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar />
+          <div className="px-2 pt-2">
+            <WaitEscalationMonitor />
+          </div>
           <main className="flex-1 overflow-auto">
             <Routes>
               <Route path="/" element={
