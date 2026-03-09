@@ -309,8 +309,12 @@ const Facturation = () => {
 
     setShowReceipt(combinedReceipt);
 
-    // Advance patient if at accueil
-    if (step === 'accueil' || step === 'paiement') {
+    // Advance patient based on payment context
+    const hasImagingItems = selectedItems.some(i => i.type === 'imagerie');
+    if (hasImagingItems && (step === 'paiement')) {
+      // Patient paid for imaging → send to imagerie
+      advancePatient(selectedPatient.id, 'imagerie', 'Facturation', `✅ Paiement imagerie ${montantAPayer.toLocaleString()} FCFA – ${modeLabel}`);
+    } else if (step === 'accueil' || step === 'paiement') {
       advancePatient(selectedPatient.id, 'triage', 'Facturation', `Paiement ${montantAPayer.toLocaleString()} FCFA – ${modeLabel}`);
     } else {
       toast.success(`💰 Paiement enregistré pour ${selectedPatient.prenom} ${selectedPatient.nom}`, {
