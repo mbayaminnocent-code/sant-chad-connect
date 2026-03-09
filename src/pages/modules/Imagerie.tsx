@@ -349,6 +349,15 @@ const Imagerie = () => {
                           <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${urgenceColor(p.urgence)}`}>
                             {p.urgence <= 2 ? '⚡ Urgent' : p.urgence === 3 ? '🔶 Modéré' : '🟢 Normal'}
                           </Badge>
+                          {hasPaid ? (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-secondary/50 text-secondary bg-secondary/5 gap-0.5">
+                              <CheckCircle className="w-2.5 h-2.5" /> Reçu ✅ {receipt?.id}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-destructive/50 text-destructive bg-destructive/5 gap-0.5">
+                              <AlertTriangle className="w-2.5 h-2.5" /> Non payé ⚠️
+                            </Badge>
+                          )}
                           {patientRequests.length > 0 && (
                             <span className="text-[10px] text-muted-foreground">
                               · {patientRequests.length} examen{patientRequests.length > 1 ? 's' : ''}
