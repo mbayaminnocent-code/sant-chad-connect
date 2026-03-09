@@ -475,12 +475,15 @@ const Facturation = () => {
                     const isAtAccueil = step === 'accueil' || step === 'paiement';
                     const hasUnpaidExams = p.consultations.some(c => c.examens.length > 0) && !hasReceiptForType(p.id, 'labo');
                     const hasUnpaidMeds = p.prescriptions.some(pr => pr.statut === 'en_attente') && !hasReceiptForType(p.id, 'pharmacie');
+                    const evts = getPatientEvents(p.id);
+                    const isWaitingImagingPay = step === 'paiement' && evts.some(e => e.to === 'paiement' && e.details?.toLowerCase().includes('imagerie'));
 
                     return (
                       <div
                         key={p.id}
                         className={`p-3 rounded-lg border cursor-pointer transition-all ${
                           isSelected ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                          : isWaitingImagingPay ? 'border-warning bg-warning/5 hover:border-warning/50'
                           : 'border-border hover:border-primary/30 hover:bg-muted/30'
                         }`}
                         onClick={() => selectPatient(p.id)}
@@ -491,7 +494,8 @@ const Facturation = () => {
                             <p className="text-xs text-muted-foreground">{p.nhid}</p>
                           </div>
                           <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
-                            {isAtAccueil && <Badge variant="outline" className="text-[9px] border-warning/50 text-warning">Consultation</Badge>}
+                            {isWaitingImagingPay && <Badge variant="outline" className="text-[9px] border-warning/50 text-warning gap-0.5"><ScanLine className="w-2.5 h-2.5" />Imagerie 💰</Badge>}
+                            {isAtAccueil && !isWaitingImagingPay && <Badge variant="outline" className="text-[9px] border-warning/50 text-warning">Consultation</Badge>}
                             {hasUnpaidExams && <Badge variant="outline" className="text-[9px] border-primary/50 text-primary gap-0.5"><FlaskConical className="w-2.5 h-2.5" />Labo</Badge>}
                             {hasUnpaidMeds && <Badge variant="outline" className="text-[9px] border-primary/50 text-primary gap-0.5"><Pill className="w-2.5 h-2.5" />Pharma</Badge>}
                             {isSelected && <CheckCircle className="w-4 h-4 text-primary" />}
