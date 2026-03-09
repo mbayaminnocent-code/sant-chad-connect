@@ -151,9 +151,11 @@ const Facturation = () => {
 
     const items: BillableItem[] = [];
     const step = getPatientStep(patientId);
+    const events = getPatientEvents(patientId);
+    const isWaitingForImagingPayment = step === 'paiement' && events.some(e => e.to === 'paiement' && e.details?.toLowerCase().includes('imagerie'));
 
-    // Consultation items for initial visit
-    if (step === 'accueil' || step === 'paiement') {
+    // Consultation items for initial visit (not imaging payment)
+    if ((step === 'accueil' || step === 'paiement') && !isWaitingForImagingPayment) {
       items.push({
         id: 'consult-base',
         label: 'Consultation générale',
@@ -161,6 +163,25 @@ const Facturation = () => {
         type: 'consultation',
         selected: true,
       });
+    }
+
+    // Imaging exams from journey events (patient sent to paiement for imaging)
+    if (!hasReceiptForType(patientId, 'imagerie')) {
+      const imagingEvent = events.find(e => e.to === 'paiement' && e.details?.toLowerCase().includes('imagerie'));
+      if (imagingEvent && imagingEvent.details) {
+        // Extract exam names from details like "💰 Payer avant imagerie: Scanner cérébral, IRM cérébrale"
+        const detailStr = imagingEvent.details.replace(/.*imagerie:\s*/i, '').replace(/.*Imagerie:\s*/i, '');
+        const examNames = detailStr.split(',').map(s => s.trim()).filter(Boolean);
+        examNames.forEach((examName, idx) => {
+          items.push({
+            id: `img-${patientId}-${idx}`,
+            label: `📷 ${examName}`,
+            montant: getImageriePrice(examName),
+            type: 'imagerie',
+            selected: true,
+          });
+        });
+      }
     }
 
     // Lab exams from consultations
