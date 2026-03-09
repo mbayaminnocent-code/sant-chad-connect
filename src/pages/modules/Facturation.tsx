@@ -247,6 +247,7 @@ const Facturation = () => {
 
   const hasLabItems = selectedItems.some(i => i.type === 'labo');
   const hasPharmaItems = selectedItems.some(i => i.type === 'pharmacie');
+  const hasImagingItems = selectedItems.some(i => i.type === 'imagerie');
 
   const handleValidatePayment = () => {
     if (!selectedPatient || totalMontant <= 0) {
