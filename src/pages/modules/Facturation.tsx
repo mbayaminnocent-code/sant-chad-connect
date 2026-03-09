@@ -312,9 +312,17 @@ const Facturation = () => {
 
     // Advance patient based on payment context
     const hasImagingItems = selectedItems.some(i => i.type === 'imagerie');
-    if (hasImagingItems && (step === 'paiement')) {
+    const hasLabItems2 = selectedItems.some(i => i.type === 'labo');
+    const events = getPatientEvents(selectedPatient.id);
+    const isWaitingForLabPayment = step === 'paiement' && events.some(e => e.to === 'paiement' && e.details?.toLowerCase().includes('labo'));
+    const isWaitingForImagingPayment2 = step === 'paiement' && events.some(e => e.to === 'paiement' && e.details?.toLowerCase().includes('imagerie'));
+
+    if (hasImagingItems && isWaitingForImagingPayment2) {
       // Patient paid for imaging → send to imagerie
       advancePatient(selectedPatient.id, 'imagerie', 'Facturation', `✅ Paiement imagerie ${montantAPayer.toLocaleString()} FCFA – ${modeLabel}`);
+    } else if (hasLabItems2 && isWaitingForLabPayment) {
+      // Patient paid for lab → send to labo
+      advancePatient(selectedPatient.id, 'labo', 'Facturation', `✅ Paiement labo ${montantAPayer.toLocaleString()} FCFA – ${modeLabel}`);
     } else if (step === 'accueil' || step === 'paiement') {
       advancePatient(selectedPatient.id, 'triage', 'Facturation', `Paiement ${montantAPayer.toLocaleString()} FCFA – ${modeLabel}`);
     } else {
