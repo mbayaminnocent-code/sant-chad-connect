@@ -330,6 +330,8 @@ const Imagerie = () => {
               const patientRequests = allRequests.filter(r => r.patientId === p.id);
               const hasActiveExam = patientRequests.some(r => r.statut === 'en_cours');
               const allDone = patientRequests.length > 0 && patientRequests.every(r => r.statut === 'termine');
+              const hasPaid = hasReceiptForType(p.id, 'imagerie');
+              const receipt = getReceiptForType(p.id, 'imagerie');
 
               return (
                 <div key={p.id} className="p-4 rounded-xl border border-border bg-card space-y-3 hover:border-primary/30 transition-colors">
