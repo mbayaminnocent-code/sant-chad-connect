@@ -86,7 +86,7 @@ interface BillableItem {
 const Facturation = () => {
   const {
     patients, advancePatient, getPatientsByStep, getPatientStep,
-    addPaymentReceipt, paymentReceipts, hasReceiptForType
+    addPaymentReceipt, paymentReceipts, hasReceiptForType, getPatientEvents
   } = usePatientJourney();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
