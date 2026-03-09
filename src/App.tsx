@@ -28,6 +28,7 @@ import PatientsList from "@/pages/modules/PatientsList";
 import MinistryDashboard from "@/pages/modules/MinistryDashboard";
 import DirectorDashboard from "@/pages/modules/DirectorDashboard";
 import EspaceMedecin from "@/pages/modules/EspaceMedecin";
+import WaitEscalationMonitor from "@/components/WaitEscalationMonitor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
