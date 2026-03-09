@@ -642,6 +642,7 @@ const Facturation = () => {
                           <span className="flex items-center gap-1"><ScanLine className="w-3 h-3 text-primary" /> Imagerie médicale</span>
                           <span className="font-medium">{selectedItems.filter(i => i.type === 'imagerie').reduce((s, i) => s + i.montant, 0).toLocaleString()} F</span>
                         </div>
+                      )}
                       {hasPharmaItems && (
                         <div className="flex justify-between text-foreground">
                           <span className="flex items-center gap-1"><Pill className="w-3 h-3 text-primary" /> Médicaments</span>
