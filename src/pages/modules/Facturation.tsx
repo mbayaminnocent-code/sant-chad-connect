@@ -153,9 +153,10 @@ const Facturation = () => {
     const step = getPatientStep(patientId);
     const events = getPatientEvents(patientId);
     const isWaitingForImagingPayment = step === 'paiement' && events.some(e => e.to === 'paiement' && e.details?.toLowerCase().includes('imagerie'));
+    const isWaitingForLabPayment = step === 'paiement' && events.some(e => e.to === 'paiement' && e.details?.toLowerCase().includes('labo'));
 
-    // Consultation items for initial visit (not imaging payment)
-    if ((step === 'accueil' || step === 'paiement') && !isWaitingForImagingPayment) {
+    // Consultation items for initial visit (not imaging/lab payment)
+    if ((step === 'accueil' || step === 'paiement') && !isWaitingForImagingPayment && !isWaitingForLabPayment) {
       items.push({
         id: 'consult-base',
         label: 'Consultation générale',
