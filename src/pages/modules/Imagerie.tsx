@@ -180,6 +180,14 @@ const Imagerie = () => {
   }
 
   const handleStartExam = (req: ImagingRequest) => {
+    // Check for payment receipt before starting
+    if (!hasReceiptForType(req.patientId, 'imagerie')) {
+      toast.error(`⚠️ Reçu de paiement requis pour ${req.patientName}`, {
+        description: '💰 Le patient doit d\'abord payer à la caisse et présenter son reçu avant de procéder à l\'examen.',
+        duration: 6000,
+      });
+      return;
+    }
     setLocalRequests(prev => {
       const exists = prev.find(r => r.id === req.id);
       if (exists) {
@@ -195,7 +203,10 @@ const Imagerie = () => {
       interpretation: '',
       statut: 'en_cours',
     });
-    toast.success(`Examen démarré pour ${req.patientName}`);
+    const receipt = getReceiptForType(req.patientId, 'imagerie');
+    toast.success(`Examen démarré pour ${req.patientName}`, {
+      description: `✅ Reçu vérifié: ${receipt?.id}`,
+    });
   };
 
   const handleOpenInterpretation = (req: ImagingRequest) => {
