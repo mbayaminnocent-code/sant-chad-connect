@@ -400,7 +400,7 @@ const Facturation = () => {
               </div>
               <div className="text-center border-t border-dashed border-border pt-2">
                 <p className="text-[10px] text-muted-foreground">═══════════════════════════</p>
-                <p className="text-[10px] text-primary font-bold">📋 Présentez ce reçu au Laboratoire / Pharmacie</p>
+                <p className="text-[10px] text-primary font-bold">📋 Présentez ce reçu au Laboratoire / Imagerie / Pharmacie</p>
                 <p className="text-[10px] text-muted-foreground">Référence: {showReceipt.id}</p>
                 <p className="text-[10px] text-muted-foreground">Reçu non-falsifiable – Marate Santé AI</p>
               </div>

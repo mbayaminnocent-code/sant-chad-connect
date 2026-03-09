@@ -60,7 +60,7 @@ interface ImagingRequest {
 const Imagerie = () => {
   const {
     patients, advancePatient, getPatientsByStep, getPatientEvents,
-    addImagingResult, updateImagingResult
+    addImagingResult, updateImagingResult, hasReceiptForType, getReceiptForType
   } = usePatientJourney();
 
   const [searchTerm, setSearchTerm] = useState('');
