@@ -90,7 +90,7 @@ export interface Patient {
   allergies: string[];
   pathologieActuelle: string;
   service: string;
-  statut: 'attente' | 'triage' | 'consultation' | 'labo' | 'imagerie' | 'pharmacie' | 'hospitalise' | 'sorti';
+  statut: 'attente' | 'paiement' | 'triage' | 'consultation' | 'labo' | 'imagerie' | 'pharmacie' | 'hospitalise' | 'sorti';
   urgence: 1 | 2 | 3 | 4 | 5;
   vitaux?: { tension: string; temperature: string; pouls: string; spo2: string; poids: string };
   consultations: Consultation[];

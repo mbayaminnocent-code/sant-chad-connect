@@ -75,7 +75,7 @@ export const usePatientJourney = () => {
 
 const mapStatutToStep = (statut: Patient['statut']): JourneyStep => {
   const map: Record<string, JourneyStep> = {
-    attente: 'accueil', triage: 'triage', consultation: 'consultation',
+    attente: 'accueil', paiement: 'paiement', triage: 'triage', consultation: 'consultation',
     labo: 'labo', imagerie: 'imagerie', pharmacie: 'pharmacie',
     hospitalise: 'hospitalise', sorti: 'sorti',
   };
@@ -84,7 +84,7 @@ const mapStatutToStep = (statut: Patient['statut']): JourneyStep => {
 
 const mapStepToStatut = (step: JourneyStep): Patient['statut'] => {
   const map: Record<JourneyStep, Patient['statut']> = {
-    accueil: 'attente', paiement: 'attente', triage: 'triage',
+    accueil: 'attente', paiement: 'paiement', triage: 'triage',
     consultation: 'consultation', labo: 'labo', imagerie: 'imagerie',
     pharmacie: 'pharmacie', hospitalise: 'hospitalise', sorti: 'sorti',
   };
