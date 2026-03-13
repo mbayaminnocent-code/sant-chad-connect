@@ -57,6 +57,42 @@ interface ImagingRequest {
   technicien?: string;
 }
 
+function detectExamType(examen: string): string {
+  const lower = examen.toLowerCase();
+  if (lower.includes('radio')) return 'radiographie';
+  if (lower.includes('écho') && lower.includes('cardi')) return 'echocardiographie';
+  if (lower.includes('écho')) return 'echographie';
+  if (lower.includes('scanner') || lower.includes('tdm')) return 'scanner';
+  if (lower.includes('irm')) return 'irm';
+  if (lower.includes('mammo')) return 'mammographie';
+  if (lower.includes('doppler')) return 'doppler';
+  if (lower.includes('angio')) return 'angiographie';
+  return '';
+}
+
+/** Parse imaging exam names from a journey event details string */
+function parseExamsFromDetails(details: string): string[] {
+  if (!details) return [];
+  // The DPI sends details like: "💰 Payer avant imagerie: Scanner (TDM), Échographie abdominale"
+  // or "Résultats d'imagerie disponibles"
+  const payerMatch = details.match(/imagerie:\s*(.+)/i);
+  if (payerMatch) {
+    return payerMatch[1].split(',').map(s => s.trim()).filter(Boolean);
+  }
+  // Also match direct exam names
+  const examKeywords = ['scanner', 'échographie', 'radiographie', 'irm', 'mammographie', 'doppler', 'angiographie', 'échocardiographie', 'radio', 'écho'];
+  const found: string[] = [];
+  for (const kw of examKeywords) {
+    if (details.toLowerCase().includes(kw)) {
+      // Extract the full exam name around the keyword
+      const regex = new RegExp(`([^,;]*${kw}[^,;]*)`, 'gi');
+      const matches = details.match(regex);
+      if (matches) found.push(...matches.map(m => m.trim()));
+    }
+  }
+  return [...new Set(found)];
+}
+
 const Imagerie = () => {
   const {
     patients, advancePatient, getPatientsByStep, getPatientEvents,
@@ -111,6 +147,7 @@ const Imagerie = () => {
   }, [patients]);
 
   // Patients at imagerie step who DON'T have any consultation-based requests or local requests
+  // NOW: parse exam names from journey events to auto-create proper requests
   const stepBasedRequests = useMemo(() => {
     const existingPatientIds = new Set([
       ...consultationBasedRequests.map(r => r.patientId),
@@ -118,22 +155,66 @@ const Imagerie = () => {
     ]);
     return patientsAtImaging
       .filter(p => !existingPatientIds.has(p.id))
-      .map(p => {
-        const lastEvent = getPatientEvents(p.id).find(e => e.to === 'imagerie');
-        return {
+      .flatMap(p => {
+        const allEvents = getPatientEvents(p.id);
+        // Find events that reference imagerie in details
+        const imagingEvents = allEvents.filter(e => 
+          e.details?.toLowerCase().includes('imagerie') || e.to === 'imagerie'
+        );
+        
+        // Parse all exam names from events
+        const examNames: string[] = [];
+        for (const evt of imagingEvents) {
+          if (evt.details) {
+            examNames.push(...parseExamsFromDetails(evt.details));
+          }
+        }
+        
+        // Also check payment events for imaging details
+        const paymentEvents = allEvents.filter(e => 
+          e.details?.toLowerCase().includes('imagerie') && e.module?.includes('Facturation')
+        );
+        for (const evt of paymentEvents) {
+          if (evt.details) {
+            examNames.push(...parseExamsFromDetails(evt.details));
+          }
+        }
+
+        const uniqueExams = [...new Set(examNames)].filter(Boolean);
+        const lastEvent = imagingEvents[0] || allEvents[0];
+
+        if (uniqueExams.length > 0) {
+          return uniqueExams.map((examen, idx) => ({
+            id: `img-step-${p.id}-${idx}`,
+            patientId: p.id,
+            patientName: `${p.prenom} ${p.nom}`,
+            nhid: p.nhid,
+            examen,
+            type: detectExamType(examen),
+            zone: examen,
+            docteur: lastEvent?.module || 'Médecin référent',
+            service: p.service,
+            date: new Date().toISOString().split('T')[0],
+            urgence: p.urgence,
+            statut: 'en_attente' as const,
+          }));
+        }
+        
+        // Fallback: no exam details found
+        return [{
           id: `img-step-${p.id}`,
           patientId: p.id,
           patientName: `${p.prenom} ${p.nom}`,
           nhid: p.nhid,
-          examen: lastEvent?.details || 'Examen à déterminer',
-          type: '',
+          examen: lastEvent?.details || 'Examen prescrit par le médecin',
+          type: detectExamType(lastEvent?.details || ''),
           zone: '',
           docteur: lastEvent?.module || 'Médecin référent',
           service: p.service,
           date: new Date().toISOString().split('T')[0],
           urgence: p.urgence,
           statut: 'en_attente' as const,
-        };
+        }];
       });
   }, [patientsAtImaging, consultationBasedRequests, localRequests, getPatientEvents]);
 
@@ -166,19 +247,6 @@ const Imagerie = () => {
     equipementsActifs: EQUIPMENT.filter(e => e.status !== 'maintenance').length,
   }), [allRequests, completedResults, patientsAtImaging]);
 
-  function detectExamType(examen: string): string {
-    const lower = examen.toLowerCase();
-    if (lower.includes('radio')) return 'radiographie';
-    if (lower.includes('écho') && lower.includes('cardi')) return 'echocardiographie';
-    if (lower.includes('écho')) return 'echographie';
-    if (lower.includes('scanner') || lower.includes('tdm')) return 'scanner';
-    if (lower.includes('irm')) return 'irm';
-    if (lower.includes('mammo')) return 'mammographie';
-    if (lower.includes('doppler')) return 'doppler';
-    if (lower.includes('angio')) return 'angiographie';
-    return '';
-  }
-
   const handleStartExam = (req: ImagingRequest) => {
     // Check for payment receipt before starting
     if (!hasReceiptForType(req.patientId, 'imagerie')) {
@@ -188,12 +256,18 @@ const Imagerie = () => {
       });
       return;
     }
+
+    // Find best equipment for this exam type
+    const bestEquipment = EQUIPMENT.find(eq => 
+      eq.status === 'disponible' && eq.types.includes(req.type)
+    );
+
     setLocalRequests(prev => {
       const exists = prev.find(r => r.id === req.id);
       if (exists) {
-        return prev.map(r => r.id === req.id ? { ...r, statut: 'en_cours' as const } : r);
+        return prev.map(r => r.id === req.id ? { ...r, statut: 'en_cours' as const, equipmentId: bestEquipment?.id } : r);
       }
-      return [...prev, { ...req, statut: 'en_cours' as const }];
+      return [...prev, { ...req, statut: 'en_cours' as const, equipmentId: bestEquipment?.id }];
     });
     addImagingResult(req.patientId, {
       id: `imgr-${Date.now()}`,
@@ -204,8 +278,9 @@ const Imagerie = () => {
       statut: 'en_cours',
     });
     const receipt = getReceiptForType(req.patientId, 'imagerie');
-    toast.success(`Examen démarré pour ${req.patientName}`, {
-      description: `✅ Reçu vérifié: ${receipt?.id}`,
+    const eqName = bestEquipment ? `${bestEquipment.icon} ${bestEquipment.name} – ${bestEquipment.salle}` : '';
+    toast.success(`🏥 Examen démarré pour ${req.patientName}`, {
+      description: `✅ Reçu vérifié: ${receipt?.id}${eqName ? ` · ${eqName}` : ''}`,
     });
   };
 
@@ -226,7 +301,7 @@ const Imagerie = () => {
       });
     }
     setLocalRequests(prev => prev.map(r => r.id === req.id ? { ...r, statut: 'termine' as const, interpretation } : r));
-    toast.success('Interprétation enregistrée et résultats disponibles');
+    toast.success('✅ Interprétation enregistrée et résultats disponibles');
     setInterpretDialog(null);
   };
 
@@ -295,12 +370,13 @@ const Imagerie = () => {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
           { label: 'Patients présents', value: stats.patientsPresents, icon: User, color: 'text-primary', bg: 'bg-primary/10', pulse: stats.patientsPresents > 0 },
           { label: 'En attente', value: stats.enAttente, icon: Clock, color: 'text-warning', bg: 'bg-warning/10', pulse: false },
           { label: 'En cours', value: stats.enCours, icon: Activity, color: 'text-primary', bg: 'bg-primary/10', pulse: stats.enCours > 0 },
           { label: 'Terminés aujourd\'hui', value: stats.termines, icon: CheckCircle, color: 'text-secondary', bg: 'bg-secondary/10', pulse: false },
+          { label: 'Payés / Reçus', value: patientsAtImaging.filter(p => hasReceiptForType(p.id, 'imagerie')).length, icon: Zap, color: 'text-secondary', bg: 'bg-secondary/10', pulse: false },
         ].map(s => (
           <Card key={s.label} className="border-border/50 hover:shadow-md transition-shadow">
             <CardContent className="p-4 flex items-center gap-3">
@@ -345,13 +421,13 @@ const Imagerie = () => {
                       <div>
                         <p className="font-semibold text-sm text-foreground">{p.prenom} {p.nom}</p>
                         <p className="text-xs text-muted-foreground">{p.nhid} · {p.age} ans · {p.pathologieActuelle}</p>
-                        <div className="flex items-center gap-1 mt-1">
+                        <div className="flex items-center gap-1 mt-1 flex-wrap">
                           <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${urgenceColor(p.urgence)}`}>
                             {p.urgence <= 2 ? '⚡ Urgent' : p.urgence === 3 ? '🔶 Modéré' : '🟢 Normal'}
                           </Badge>
                           {hasPaid ? (
                             <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-secondary/50 text-secondary bg-secondary/5 gap-0.5">
-                              <CheckCircle className="w-2.5 h-2.5" /> Reçu ✅ {receipt?.id}
+                              <CheckCircle className="w-2.5 h-2.5" /> Reçu ✅
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-destructive/50 text-destructive bg-destructive/5 gap-0.5">
@@ -395,35 +471,44 @@ const Imagerie = () => {
                   {/* Patient's exam pipeline */}
                   {patientRequests.length > 0 && (
                     <div className="space-y-2">
-                      {patientRequests.map(req => (
-                        <div key={req.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/30 border border-border/50">
-                          <div className={`w-1.5 h-8 rounded-full ${
-                            req.statut === 'termine' ? 'bg-secondary' : req.statut === 'en_cours' ? 'bg-primary animate-pulse' : 'bg-warning'
-                          }`} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-foreground truncate">{req.examen}</p>
-                            <p className="text-[10px] text-muted-foreground">{req.docteur}</p>
+                      {patientRequests.map(req => {
+                        const typeInfo = IMAGING_TYPES.find(t => t.value === req.type);
+                        const eqInfo = 'equipmentId' in req && req.equipmentId ? EQUIPMENT.find(e => e.id === req.equipmentId) : null;
+                        return (
+                          <div key={req.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                            <div className={`w-1.5 h-10 rounded-full ${
+                              req.statut === 'termine' ? 'bg-secondary' : req.statut === 'en_cours' ? 'bg-primary animate-pulse' : 'bg-warning'
+                            }`} />
+                            <div className="text-xl">{typeInfo?.icon || '📷'}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-foreground truncate">{req.examen}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {req.docteur}
+                                {typeInfo && ` · ${typeInfo.duree}`}
+                                {eqInfo && ` · ${eqInfo.salle}`}
+                              </p>
+                            </div>
+                            {statutBadge(req.statut)}
+                            <div className="flex items-center gap-1">
+                              {req.statut === 'en_attente' && (
+                                <Button size="sm" className="h-7 text-[10px] gap-1" onClick={() => handleStartExam(req)} disabled={!hasPaid}>
+                                  <Play className="w-3 h-3" /> {hasPaid ? 'Démarrer' : '💰 Reçu requis'}
+                                </Button>
+                              )}
+                              {req.statut === 'en_cours' && (
+                                <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => handleOpenInterpretation(req)}>
+                                  <FileText className="w-3 h-3" /> Interpréter
+                                </Button>
+                              )}
+                              {req.statut === 'termine' && (
+                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1">
+                                  <Eye className="w-3 h-3" /> Voir
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          {statutBadge(req.statut)}
-                          <div className="flex items-center gap-1">
-                            {req.statut === 'en_attente' && (
-                              <Button size="sm" className="h-7 text-[10px] gap-1" onClick={() => handleStartExam(req)}>
-                                <Play className="w-3 h-3" /> Démarrer
-                              </Button>
-                            )}
-                            {req.statut === 'en_cours' && (
-                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => handleOpenInterpretation(req)}>
-                                <FileText className="w-3 h-3" /> Interpréter
-                              </Button>
-                            )}
-                            {req.statut === 'termine' && (
-                              <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1">
-                                <Eye className="w-3 h-3" /> Voir
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 
@@ -510,46 +595,61 @@ const Imagerie = () => {
             <div className="space-y-2">
               {filteredRequests
                 .sort((a, b) => a.urgence - b.urgence)
-                .map(req => (
-                  <Card key={req.id} className="hover:border-primary/20 transition-all group">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-1.5 self-stretch rounded-full ${
-                          req.statut === 'termine' ? 'bg-secondary' : req.statut === 'en_cours' ? 'bg-primary animate-pulse' : 'bg-warning'
-                        }`} />
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${urgenceColor(req.urgence)}`}>
-                          P{req.urgence}
-                        </div>
-                        <div className="flex-1 min-w-0">
+                .map(req => {
+                  const typeInfo = IMAGING_TYPES.find(t => t.value === req.type);
+                  const hasPaid = hasReceiptForType(req.patientId, 'imagerie');
+                  return (
+                    <Card key={req.id} className="hover:border-primary/20 transition-all group">
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-1.5 self-stretch rounded-full ${
+                            req.statut === 'termine' ? 'bg-secondary' : req.statut === 'en_cours' ? 'bg-primary animate-pulse' : 'bg-warning'
+                          }`} />
+                          <div className="text-lg">{typeInfo?.icon || '📷'}</div>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${urgenceColor(req.urgence)}`}>
+                            P{req.urgence}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-sm text-foreground">{req.patientName}</p>
+                              <span className="text-[10px] text-muted-foreground">{req.nhid}</span>
+                              {hasPaid ? (
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 border-secondary/50 text-secondary">✅ Payé</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 border-destructive/50 text-destructive">⚠️ Non payé</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-primary font-medium flex items-center gap-1">
+                                <Camera className="w-3 h-3" />{req.examen}
+                              </span>
+                              <ChevronRight className="w-3 h-3 text-muted-foreground/40" />
+                              <span className="text-[10px] text-muted-foreground">{req.docteur} · {req.service}</span>
+                            </div>
+                          </div>
                           <div className="flex items-center gap-2">
-                            <p className="font-semibold text-sm text-foreground">{req.patientName}</p>
-                            <span className="text-[10px] text-muted-foreground">{req.nhid}</span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-primary font-medium flex items-center gap-1">
-                              <Camera className="w-3 h-3" />{req.examen}
-                            </span>
-                            <ChevronRight className="w-3 h-3 text-muted-foreground/40" />
-                            <span className="text-[10px] text-muted-foreground">{req.docteur} · {req.service}</span>
+                            {statutBadge(req.statut)}
+                            {req.statut === 'en_attente' && (
+                              <Button 
+                                size="sm" 
+                                className="h-7 text-[10px] gap-1 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                onClick={() => handleStartExam(req)}
+                                disabled={!hasPaid}
+                              >
+                                <Play className="w-3 h-3" /> {hasPaid ? 'Démarrer' : '💰 Reçu requis'}
+                              </Button>
+                            )}
+                            {req.statut === 'en_cours' && (
+                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => handleOpenInterpretation(req)}>
+                                <FileText className="w-3 h-3" /> Interpréter
+                              </Button>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {statutBadge(req.statut)}
-                          {req.statut === 'en_attente' && (
-                            <Button size="sm" className="h-7 text-[10px] gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleStartExam(req)}>
-                              <Play className="w-3 h-3" /> Démarrer
-                            </Button>
-                          )}
-                          {req.statut === 'en_cours' && (
-                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => handleOpenInterpretation(req)}>
-                              <FileText className="w-3 h-3" /> Interpréter
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
             </div>
           )}
         </TabsContent>
