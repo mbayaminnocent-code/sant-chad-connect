@@ -473,7 +473,7 @@ const Imagerie = () => {
                     <div className="space-y-2">
                       {patientRequests.map(req => {
                         const typeInfo = IMAGING_TYPES.find(t => t.value === req.type);
-                        const eqInfo = req.equipmentId ? EQUIPMENT.find(e => e.id === req.equipmentId) : null;
+                        const eqInfo = 'equipmentId' in req && req.equipmentId ? EQUIPMENT.find(e => e.id === req.equipmentId) : null;
                         return (
                           <div key={req.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
                             <div className={`w-1.5 h-10 rounded-full ${
