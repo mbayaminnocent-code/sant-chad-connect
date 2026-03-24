@@ -5,8 +5,10 @@ import { Users, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const PatientsList = () => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const { role } = useAuth();
 
@@ -18,14 +20,14 @@ const PatientsList = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Liste des Patients</h1>
-          <p className="text-muted-foreground text-sm">{MOCK_PATIENTS.length} patients enregistrés</p>
+          <h1 className="text-2xl font-bold text-foreground">{t('patients.title')}</h1>
+          <p className="text-muted-foreground text-sm">{MOCK_PATIENTS.length} {t('patients.registered')}</p>
         </div>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Rechercher par nom, ID ou pathologie..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder={t('patients.search')} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
 
       <div className="grid gap-3">
@@ -38,13 +40,13 @@ const PatientsList = () => {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">{p.prenom} {p.nom}</p>
-                  <p className="text-xs text-muted-foreground">{p.nhid} • {p.age} ans • {p.sexe} • {p.groupeSanguin}</p>
+                  <p className="text-xs text-muted-foreground">{p.nhid} • {p.age} {t('common.years')} • {p.sexe} • {p.groupeSanguin}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className="text-xs">{p.pathologieActuelle}</Badge>
                 <Badge variant={p.statut === 'hospitalise' ? 'default' : p.statut === 'consultation' ? 'secondary' : 'outline'} className="text-xs capitalize">{p.statut}</Badge>
-                {p.allergies.length > 0 && <Badge variant="destructive" className="text-xs">Allergies</Badge>}
+                {p.allergies.length > 0 && <Badge variant="destructive" className="text-xs">{t('patients.allergies')}</Badge>}
                 {p.urgence <= 2 && <Badge variant="destructive" className="text-xs">U{p.urgence}</Badge>}
               </div>
             </CardContent>
