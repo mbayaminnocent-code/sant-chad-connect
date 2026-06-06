@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { usePatientJourney, JOURNEY_STEPS } from '@/contexts/PatientJourneyContext';
 import PatientJourneyTracker from '@/components/PatientJourneyTracker';
+import PatientSimulation from '@/components/PatientSimulation';
 import { Monitor, QrCode, Fingerprint, Users, Clock, CheckCircle, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
