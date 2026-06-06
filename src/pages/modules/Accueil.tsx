@@ -54,6 +54,8 @@ const Accueil = () => {
         </Button>
       </div>
 
+      <PatientSimulation />
+
       {showKiosk ? (
         <div className="space-y-6">
           <Card className="border-2 border-primary/20">
