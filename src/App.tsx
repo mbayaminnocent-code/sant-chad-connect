@@ -29,6 +29,7 @@ import MinistryDashboard from "@/pages/modules/MinistryDashboard";
 import DirectorDashboard from "@/pages/modules/DirectorDashboard";
 import EspaceMedecin from "@/pages/modules/EspaceMedecin";
 import WaitEscalationMonitor from "@/components/WaitEscalationMonitor";
+import AutoTranslator from "@/i18n/autoTranslate";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
