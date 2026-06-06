@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { usePatientJourney, JOURNEY_STEPS } from '@/contexts/PatientJourneyContext';
 import PatientJourneyTracker from '@/components/PatientJourneyTracker';
+import PatientSimulation from '@/components/PatientSimulation';
 import { Monitor, QrCode, Fingerprint, Users, Clock, CheckCircle, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -52,6 +53,8 @@ const Accueil = () => {
           <Monitor className="w-4 h-4" /> {showKiosk ? t('accueil.standard_view') : t('accueil.kiosk_mode')}
         </Button>
       </div>
+
+      <PatientSimulation />
 
       {showKiosk ? (
         <div className="space-y-6">
